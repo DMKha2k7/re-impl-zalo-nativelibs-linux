@@ -1,7 +1,7 @@
 {
   "name": "re-impl-file-utilities",
   "version": "1.0.0",
-  "description": "Zalo file-utilities native addon – Rust reimplementation for Linux",
+  "description": "Re-impl of file-utilities for Linux",
   "main": "index.js",
   "scripts": {
     "build": "cargo build --release && node scripts/rename.js",

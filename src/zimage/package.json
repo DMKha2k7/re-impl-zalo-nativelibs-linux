@@ -1,7 +1,7 @@
 {
   "name": "re-impl-zimage",
   "version": "1.0.0",
-  "description": "Zalo zimage native addon – libvips thumbnail for Linux",
+  "description": "Re-impl of zimage for Linux",
   "main": "index.js",
   "scripts": {
     "build": "node-gyp rebuild && node scripts/postbuild.js",
@@ -9,6 +9,6 @@
   },
   "license": "ISC",
   "dependencies": {
-    "node-addon-api": "^8.8.0"
+    "node-addon-api": "6.1.0"
   }
 }

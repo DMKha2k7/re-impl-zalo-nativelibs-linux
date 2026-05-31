@@ -1,7 +1,7 @@
 {
   "name": "re-impl-zjxl",
   "version": "1.0.0",
-  "description": "Zalo zjxl native addon for Linux x86_64",
+  "description": "Re-impl of zjxl for Linux",
   "main": "index.js",
   "scripts": {
     "build": "node-gyp rebuild && node scripts/postbuild.js",
@@ -9,6 +9,6 @@
   },
   "license": "ISC",
   "dependencies": {
-    "node-addon-api": "^8.8.0"
+    "node-addon-api": "6.1.0"
   }
 }

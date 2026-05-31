@@ -13,6 +13,11 @@ const ROOT_DIR = path.resolve(__dirname, '.');
 const NATIVELIBS_BUILD_DIR = path.resolve(ROOT_DIR);
 const DEST_DIR = path.resolve(ROOT_DIR, 'nativelibs-linux-patch');
 
+// Electron target configuration
+const ELECTRON_VERSION = '22.3.27';
+const ELECTRON_DIST_URL = 'https://electronjs.org/headers';
+const ELECTRON_ARCH = 'x64';
+
 // Handle clean command
 if (process.argv.includes('clean')) {
   console.log(`🧹 Cleaning up old build artifacts in ${NATIVELIBS_BUILD_DIR}...`);
@@ -168,16 +173,6 @@ const modules = [
     wrappers: [
       { relPath: 'zjxl/index.js', dest: path.join(DEST_DIR, 'zjxl', 'index.js') }
     ]
-  },
-  {
-    // name: 'zwalker',
-    // type: 'rust',
-    // buildDir: path.join(NATIVELIBS_BUILD_DIR, 'src', 'zwalker'),
-    // srcBinary: path.join(NATIVELIBS_BUILD_DIR, 'src', 'zwalker', 'target', 'release', 'libzwalker.so'),
-    // destBinary: path.join(DEST_DIR, 'zwalker', 'zwalker.linux-x64-gnu.node'),
-    // wrappers: [
-    //   { relPath: 'zwalker/index.js', dest: path.join(DEST_DIR, 'zwalker', 'index.js') }
-    // ]
   }
 ];
 
@@ -188,7 +183,7 @@ for (const mod of modules) {
     // A. Compilation
     if (mod.type === 'gyp' || mod.type === 'gyp-custom') {
       runCmd('npm install --no-audit --no-fund', mod.buildDir);
-      runCmd('npx node-gyp rebuild', mod.buildDir);
+      runCmd(`npx node-gyp rebuild --target=${ELECTRON_VERSION} --arch=${ELECTRON_ARCH} --dist-url=${ELECTRON_DIST_URL}`, mod.buildDir);
     } else if (mod.type === 'rust') {
       runCmd('cargo build --release', mod.buildDir);
     }

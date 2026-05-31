@@ -1,0 +1,10 @@
+{
+  "name": "nativelibs-build-orchestrator",
+  "version": "1.0.0",
+  "description": "Orchestrator for compiling and packaging all Zalo native libraries for Linux",
+  "scripts": {
+    "build": "node build.js",
+    "clean": "node build.js clean"
+  },
+  "license": "MIT"
+}

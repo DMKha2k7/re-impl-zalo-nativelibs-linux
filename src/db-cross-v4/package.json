@@ -1,0 +1,16 @@
+{
+  "name": "db-cross-v4",
+  "version": "1.0.0",
+  "description": "Ported C++ Zalo Native Addon for Linux",
+  "main": "index.js",
+  "scripts": {
+    "install": "node-gyp rebuild",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "^10.0.0"
+  }
+}

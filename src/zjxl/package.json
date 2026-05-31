@@ -1,0 +1,13 @@
+{
+  "name": "zjxl",
+  "version": "1.0.0",
+  "description": "Zalo zjxl native addon for Linux x86_64",
+  "main": "index.js",
+  "scripts": {
+    "build": "node-gyp rebuild && node scripts/postbuild.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "node-addon-api": "^8.3.1"
+  }
+}

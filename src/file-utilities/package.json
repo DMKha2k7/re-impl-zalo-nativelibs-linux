@@ -1,0 +1,15 @@
+{
+  "name": "file-utilities",
+  "version": "1.0.0",
+  "description": "Zalo file-utilities native addon – Rust reimplementation for Linux",
+  "main": "index.js",
+  "scripts": {
+    "build": "cargo build --release && node scripts/rename.js",
+    "build:debug": "cargo build",
+    "test": "node test.js"
+  },
+  "files": [
+    "index.js",
+    "*.node"
+  ]
+}

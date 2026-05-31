@@ -3,12 +3,12 @@
     {
       "target_name": "db-cross-v4-native",
       "sources": [
-        "addon.cpp",
-        "tlv.cpp",
-        "crypto.cpp",
-        "xxhash.cpp",
-        "lzma_decoder.cpp",
-        "backup_format.cpp"
+        "src/addon.cpp",
+        "src/tlv.cpp",
+        "src/crypto.cpp",
+        "src/xxhash.cpp",
+        "src/lzma_decoder.cpp",
+        "src/backup_format.cpp"
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")"

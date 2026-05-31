@@ -1,4 +1,9 @@
 {
+  "name": "re-impl-file-utils",
+  "version": "1.0.0",
+  "description": "Zalo file-utils native addon – Linux port",
+  "main": "file-utils.js",
+  "license": "ISC",
   "dependencies": {
     "node-addon-api": "^8.8.0",
     "node-gyp": "^12.3.0"

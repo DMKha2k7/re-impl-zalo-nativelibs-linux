@@ -2,7 +2,7 @@
   "targets": [
     {
       "target_name": "file-utils",
-      "sources": [ "file-utils.cpp" ],
+      "sources": [ "src/file-utils.cpp" ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")"
       ],

@@ -1,5 +1,5 @@
 {
-  "name": "file-utilities",
+  "name": "re-impl-file-utilities",
   "version": "1.0.0",
   "description": "Zalo file-utilities native addon – Rust reimplementation for Linux",
   "main": "index.js",
@@ -8,6 +8,8 @@
     "build:debug": "cargo build",
     "test": "node test.js"
   },
+  "author": "DMKha",
+  "license": "ISC",
   "files": [
     "index.js",
     "*.node"

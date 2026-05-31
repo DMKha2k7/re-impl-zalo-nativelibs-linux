@@ -1,8 +1,6 @@
 /**
- * build.js
- * Orchestrates compilation and packaging of all 7 native libraries for Linux.
- * Outputs the built modules with exact directory structure and JS wrappers into project's `nativelibs/` folder.
- */
+build.js - build all native libraries for Linux 
+**/
 
 'use strict';
 

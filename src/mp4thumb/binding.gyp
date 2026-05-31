@@ -4,7 +4,7 @@
       "target_name": "mp4thumb",
       "cflags!": [ "-fno-exceptions" ],
       "cflags_cc!": [ "-fno-exceptions" ],
-      "sources": [ "mp4thumb.cpp" ],
+      "sources": [ "src/mp4thumb.cpp" ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
         "/usr/local/include"

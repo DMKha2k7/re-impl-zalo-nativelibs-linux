@@ -1,10 +1,26 @@
 {
-  "name": "nativelibs-build-orchestrator",
+  "name": "re-impl-zalo-nativelibs-linux",
   "version": "1.0.0",
-  "description": "Orchestrator for compiling and packaging all Zalo native libraries for Linux",
+  "description": "Re-impl of Zalo native libs for linux",
+  "author": "DMKha",
+  "license": "ISC",
   "scripts": {
     "build": "node build.js",
     "clean": "node build.js clean"
   },
-  "license": "MIT"
+  "devDependencies": {
+    "adm-zip": "^0.5.13",
+    "node-addon-api": "^8.8.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/DMKha2k7/re-impl-zalo-nativelibs-linux.git"
+  },
+  "keywords": [
+    "zalo",
+    "native",
+    "nativelibs",
+    "re-impl",
+    "linux"
+  ]
 }

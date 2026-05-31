@@ -3,7 +3,6 @@
 This repository contains the Re-impl source code and build orchestrator to compile and package the native Node.js addons for the Zalo desktop client on Linux systems.
 
 The orchestrator compiles C++ and Rust codebases directly, copies original macOS Javascript wrappers, and applies live search-and-replace patches to inject Linux platform support.
----
 
 # 📋 Prerequisites & Dependency Packages
 

@@ -1,8 +1,10 @@
-# Re-impl Zalo for Linux Native Libraries Build 🛠️
+# Re-impl Zalo for Linux Native Libraries Patch Build 🛠️
 
 This repository contains the Re-impl source code and build orchestrator to compile and package the native Node.js addons for the Zalo desktop client on Linux systems.
 
 The orchestrator compiles C++ and Rust codebases directly, copies original macOS Javascript wrappers, and applies live search-and-replace patches to inject Linux platform support.
+
+Thanks **realdtn2** for db-cross-v4 nativelibs: [realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026)
 
 # 📋 Prerequisites & Dependency Packages
 
@@ -112,7 +114,7 @@ The default destination folder is `nativelibs-linux-patch`.
 The orchestration script performs the following automated steps upon running `npm run build`:
 
 1. **Compilation**:
-   * Runs `node-gyp rebuild` for C++ modules (`db-cross-v4`, `file-utils`, `mp4thumb`, `zimage`, `zjxl`).
+   * Runs `node-gyp rebuild` for C++ modules (`file-utils`, `mp4thumb`, `zimage`, `zjxl`).
    * Runs `cargo build --release` for Rust modules (`file-utilities`).
 2. **Live JS Wrapper Patching**:
    * `patch-js-helper.js` reads the original macOS JS wrappers from the `nativelibs-macOS` folder.

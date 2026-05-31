@@ -1,0 +1,1 @@
+cmd_Release/mp4thumb.node := ln -f "Release/obj.target/mp4thumb.node" "Release/mp4thumb.node" 2>/dev/null || (rm -rf "Release/mp4thumb.node" && cp -af "Release/obj.target/mp4thumb.node" "Release/mp4thumb.node")

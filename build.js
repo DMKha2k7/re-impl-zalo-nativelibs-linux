@@ -22,7 +22,7 @@ const ELECTRON_ARCH = 'x64';
 if (process.argv.includes('clean')) {
   console.log(`🧹 Cleaning up old build artifacts in ${NATIVELIBS_BUILD_DIR}...`);
   const subdirs = [
-    'db-cross-v4',
+    // 'db-cross-v4',
     'file-utilities',
     'file-utils',
     'mp4thumb',
@@ -117,8 +117,8 @@ const modules = [
   {
     name: 'db-cross-v4',
     type: 'gyp',
-    buildDir: path.join(NATIVELIBS_BUILD_DIR, 'src', 'db-cross-v4'),
-    srcBinary: path.join(NATIVELIBS_BUILD_DIR, 'src', 'db-cross-v4', 'build', 'Release', 'db-cross-v4-native.node'),
+    // buildDir: path.join(NATIVELIBS_BUILD_DIR, 'src', 'db-cross-v4'),
+    srcBinary: path.join(NATIVELIBS_BUILD_DIR, 'src', 'db-cross-v4', 'db-cross-v4-native.node'),
     destBinary: path.join(DEST_DIR, 'db-cross-v4', 'prebuilt', 'linux', 'electron_x86_64', 'db-cross-v4-native.node'),
     wrappers: [
       { relPath: 'db-cross-v4/dist/binding.js', dest: path.join(DEST_DIR, 'db-cross-v4', 'dist', 'binding.js') }
@@ -181,7 +181,7 @@ for (const mod of modules) {
   console.log(`\n📦 ==================== Building ${mod.name} ====================`);
   try {
     // A. Compilation
-    if (mod.type === 'gyp' || mod.type === 'gyp-custom') {
+    if ((mod.type === 'gyp' && mod.name !== 'db-cross-v4') || (mod.type === 'gyp-custom' && mod.name !== 'db-cross-v4')) {
       runCmd('npm install --no-audit --no-fund', mod.buildDir);
       runCmd(`npx node-gyp rebuild --target=${ELECTRON_VERSION} --arch=${ELECTRON_ARCH} --dist-url=${ELECTRON_DIST_URL}`, mod.buildDir);
     } else if (mod.type === 'rust') {

@@ -1,0 +1,1 @@
+cmd_Release/obj.target/file-utils.node := g++ -o Release/obj.target/file-utils.node -shared -pthread -rdynamic -m64  -Wl,-soname=file-utils.node -Wl,--start-group Release/obj.target/file-utils/src/file-utils.o Release/obj.target/node_modules/node-addon-api/nothing.a -Wl,--end-group 

@@ -4,7 +4,7 @@
   "description": "Re-impl of zimage for Linux",
   "main": "index.js",
   "scripts": {
-    "build": "node-gyp rebuild && node scripts/postbuild.js",
+    "build": "node build.js",
     "test": "node test.js"
   },
   "license": "ISC",

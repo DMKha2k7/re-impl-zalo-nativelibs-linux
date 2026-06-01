@@ -1,1 +1,0 @@
-cmd_Release/file-utils.node := ln -f "Release/obj.target/file-utils.node" "Release/file-utils.node" 2>/dev/null || (rm -rf "Release/file-utils.node" && cp -af "Release/obj.target/file-utils.node" "Release/file-utils.node")

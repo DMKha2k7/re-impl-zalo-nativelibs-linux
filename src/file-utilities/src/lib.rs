@@ -10,17 +10,8 @@ use napi_derive::napi;
 
 // ─── Job Registry ────────────────────────────────────────────────────────────
 
-static JOB_COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-
 lazy_static::lazy_static! {
     static ref JOB_REGISTRY: Mutex<HashMap<u64, Arc<AtomicBool>>> = Mutex::new(HashMap::new());
-}
-
-fn new_job() -> (u64, Arc<AtomicBool>) {
-    let id = JOB_COUNTER.fetch_add(1, Ordering::SeqCst);
-    let flag = Arc::new(AtomicBool::new(false));
-    JOB_REGISTRY.lock().unwrap().insert(id, flag.clone());
-    (id, flag)
 }
 
 fn remove_job(id: u64) {
@@ -30,8 +21,7 @@ fn remove_job(id: u64) {
 // ─── cancelJob ───────────────────────────────────────────────────────────────
 
 /// Cancel a running async job by its id.
-/// Returns true if the job was found and cancelled, false otherwise.
-#[napi]
+#[napi(js_name = "cancelJob")]
 pub fn cancel_job(job_id: f64) -> bool {
     let id = job_id as u64;
     let registry = JOB_REGISTRY.lock().unwrap();
@@ -41,6 +31,28 @@ pub fn cancel_job(job_id: f64) -> bool {
     } else {
         false
     }
+}
+
+// ─── Option structs ──────────────────────────────────────────────────────────
+
+#[napi(object)]
+#[derive(Default)]
+pub struct GetDirectorySizeOptions {
+    pub workers: Option<i32>,
+}
+
+#[napi(object)]
+#[derive(Default)]
+pub struct GetDirectorySizeTreeOptions {
+    pub max_depth: Option<i32>,
+    pub workers: Option<i32>,
+    pub include_root: Option<bool>,
+}
+
+#[napi(object)]
+#[derive(Default)]
+pub struct GetDirectorySizeByGlobOptions {
+    pub workers: Option<i32>,
 }
 
 // ─── Filesystem detection ─────────────────────────────────────────────────────
@@ -53,14 +65,12 @@ fn detect_fs_type_linux(path: &str) -> String {
         Err(_) => return "unknown".to_string(),
     };
 
-    // Use statfs(2) via libc
     let mut buf: libc::statfs64 = unsafe { std::mem::zeroed() };
     let ret = unsafe { libc::statfs64(cpath.as_ptr(), &mut buf) };
     if ret != 0 {
         return "unknown".to_string();
     }
 
-    // f_type magic numbers (Linux-specific)
     match buf.f_type as u64 {
         0xEF53 => "ext4".to_string(),
         0x52654973 => "reiserfs".to_string(),
@@ -128,14 +138,12 @@ fn do_detect_filesystem(path: String) -> FilesystemInfo {
     }
 }
 
-/// Detect filesystem properties for a given path synchronously.
-#[napi]
+#[napi(js_name = "detectFilesystemSync")]
 pub fn detect_filesystem_sync(path: String) -> FilesystemInfo {
     do_detect_filesystem(path)
 }
 
-/// Detect filesystem properties for a given path asynchronously.
-#[napi]
+#[napi(js_name = "detectFilesystemAsync")]
 pub async fn detect_filesystem_async(path: String) -> napi::Result<FilesystemInfo> {
     let result = tokio::task::spawn_blocking(move || do_detect_filesystem(path))
         .await
@@ -158,28 +166,25 @@ fn do_detect_hardlinks(path: &str) -> bool {
         return false;
     }
 
-    // Filesystems that do NOT support hardlinks
     let no_hardlink = [
         0x4d44u64,       // MSDOS/FAT
         0x2011BAB0u64,   // exFAT
         0x5346544eu64,   // NTFS (limited)
         0x9660u64,       // ISO9660
-        0x65735546u64,   // FUSE (unknown, assume no)
-        0x73717368u64,   // SquashFS (read-only)
-        0x28CD3D45u64,   // CramFS (read-only)
+        0x65735546u64,   // FUSE
+        0x73717368u64,   // SquashFS
+        0x28CD3D45u64,   // CramFS
     ];
 
     !no_hardlink.contains(&(buf.f_type as u64))
 }
 
-/// Detect whether the filesystem at path supports hardlinks (synchronous).
-#[napi]
+#[napi(js_name = "detectHardlinksSync")]
 pub fn detect_hardlinks_sync(path: String) -> bool {
     do_detect_hardlinks(&path)
 }
 
-/// Detect whether the filesystem at path supports hardlinks (asynchronous).
-#[napi]
+#[napi(js_name = "detectHardlinksAsync")]
 pub async fn detect_hardlinks_async(path: String) -> napi::Result<bool> {
     let result = tokio::task::spawn_blocking(move || do_detect_hardlinks(&path))
         .await
@@ -211,20 +216,30 @@ fn do_get_directory_size(path: &Path, cancel: Option<&Arc<AtomicBool>>) -> u64 {
     total
 }
 
-/// Compute total size of all files in a directory recursively (synchronous).
-#[napi]
-pub fn get_directory_size_sync(path: String) -> f64 {
+#[napi(js_name = "getDirectorySizeSync")]
+pub fn get_directory_size_sync(path: String, _options: Option<GetDirectorySizeOptions>) -> f64 {
     do_get_directory_size(Path::new(&path), None) as f64
 }
 
-/// Compute total size of all files in a directory recursively (asynchronous).
-/// Returns a Promise<f64>.
-#[napi]
-pub async fn get_directory_size_async(path: String) -> napi::Result<f64> {
-    let (job_id, cancel) = new_job();
+#[napi(js_name = "getDirectorySizeAsync")]
+pub async fn get_directory_size_async(
+    path: String,
+    _options: Option<GetDirectorySizeOptions>,
+    job_id: Option<f64>,
+) -> napi::Result<f64> {
+    let cancel = if let Some(jid) = job_id {
+        let flag = Arc::new(AtomicBool::new(false));
+        JOB_REGISTRY.lock().unwrap().insert(jid as u64, flag.clone());
+        Some(flag)
+    } else {
+        None
+    };
+    let cancel_clone = cancel.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let r = do_get_directory_size(Path::new(&path), Some(&cancel));
-        remove_job(job_id);
+        let r = do_get_directory_size(Path::new(&path), cancel_clone.as_ref());
+        if let Some(jid) = job_id {
+            remove_job(jid as u64);
+        }
         r
     })
     .await
@@ -295,19 +310,33 @@ fn do_get_directory_size_tree(path: &Path, cancel: Option<&Arc<AtomicBool>>) -> 
     }
 }
 
-/// Get directory size tree (synchronous).
-#[napi]
-pub fn get_directory_size_tree_sync(path: String) -> DirTreeEntry {
+#[napi(js_name = "getDirectorySizeTreeSync")]
+pub fn get_directory_size_tree_sync(
+    path: String,
+    _options: Option<GetDirectorySizeTreeOptions>,
+) -> DirTreeEntry {
     do_get_directory_size_tree(Path::new(&path), None)
 }
 
-/// Get directory size tree (asynchronous).
-#[napi]
-pub async fn get_directory_size_tree_async(path: String) -> napi::Result<DirTreeEntry> {
-    let (job_id, cancel) = new_job();
+#[napi(js_name = "getDirectorySizeTreeAsync")]
+pub async fn get_directory_size_tree_async(
+    path: String,
+    _options: Option<GetDirectorySizeTreeOptions>,
+    job_id: Option<f64>,
+) -> napi::Result<DirTreeEntry> {
+    let cancel = if let Some(jid) = job_id {
+        let flag = Arc::new(AtomicBool::new(false));
+        JOB_REGISTRY.lock().unwrap().insert(jid as u64, flag.clone());
+        Some(flag)
+    } else {
+        None
+    };
+    let cancel_clone = cancel.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let r = do_get_directory_size_tree(Path::new(&path), Some(&cancel));
-        remove_job(job_id);
+        let r = do_get_directory_size_tree(Path::new(&path), cancel_clone.as_ref());
+        if let Some(jid) = job_id {
+            remove_job(jid as u64);
+        }
         r
     })
     .await
@@ -350,7 +379,6 @@ fn do_get_directory_size_by_glob(
         }
 
         let file_path = entry.path();
-        // Match against full path relative to base, or just filename
         let rel = file_path.strip_prefix(path).unwrap_or(file_path);
         let filename = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
@@ -363,27 +391,66 @@ fn do_get_directory_size_by_glob(
     total
 }
 
-/// Get directory size counting only files matching glob patterns (synchronous).
-#[napi]
-pub fn get_directory_size_by_glob_sync(path: String, globs: Vec<String>) -> napi::Result<f64> {
-    let glob_set = build_glob_set(&globs)
-        .map_err(|e| napi::Error::from_reason(format!("Invalid glob pattern: {}", e)))?;
-    Ok(do_get_directory_size_by_glob(Path::new(&path), &glob_set, None) as f64)
+fn split_glob_pattern(pattern: &str) -> (String, String) {
+    let wildcards = ['*', '?', '[', '{'];
+    if let Some(idx) = pattern.chars().position(|c| wildcards.contains(&c)) {
+        let prefix = &pattern[..idx];
+        if let Some(sep_idx) = prefix.rfind('/') {
+            let dir = &prefix[..sep_idx];
+            let glob = &pattern[sep_idx + 1..];
+            (
+                if dir.is_empty() { "/".to_string() } else { dir.to_string() },
+                glob.to_string(),
+            )
+        } else {
+            (".".to_string(), pattern.to_string())
+        }
+    } else {
+        let path = Path::new(pattern);
+        if path.is_dir() {
+            (pattern.to_string(), "**/*".to_string())
+        } else if let Some(parent) = path.parent() {
+            let dir = parent.to_string_lossy().into_owned();
+            let file = path.file_name().unwrap_or_default().to_string_lossy().into_owned();
+            (if dir.is_empty() { ".".to_string() } else { dir }, file)
+        } else {
+            (".".to_string(), pattern.to_string())
+        }
+    }
 }
 
-/// Get directory size counting only files matching glob patterns (asynchronous).
-#[napi]
-pub async fn get_directory_size_by_glob_async(
-    path: String,
-    globs: Vec<String>,
+#[napi(js_name = "getDirectorySizeByGlobSync")]
+pub fn get_directory_size_by_glob_sync(
+    pattern: String,
+    _options: Option<GetDirectorySizeByGlobOptions>,
 ) -> napi::Result<f64> {
-    let glob_set = build_glob_set(&globs)
-        .map_err(|e| napi::Error::from_reason(format!("Invalid glob pattern: {}", e)))?;
+    let (dir, glob) = split_glob_pattern(&pattern);
+    let glob_set = build_glob_set(&[glob])?;
+    Ok(do_get_directory_size_by_glob(Path::new(&dir), &glob_set, None) as f64)
+}
 
-    let (job_id, cancel) = new_job();
+#[napi(js_name = "getDirectorySizeByGlobAsync")]
+pub async fn get_directory_size_by_glob_async(
+    pattern: String,
+    _options: Option<GetDirectorySizeByGlobOptions>,
+    job_id: Option<f64>,
+) -> napi::Result<f64> {
+    let (dir, glob) = split_glob_pattern(&pattern);
+    let glob_set = build_glob_set(&[glob])?;
+
+    let cancel = if let Some(jid) = job_id {
+        let flag = Arc::new(AtomicBool::new(false));
+        JOB_REGISTRY.lock().unwrap().insert(jid as u64, flag.clone());
+        Some(flag)
+    } else {
+        None
+    };
+    let cancel_clone = cancel.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let r = do_get_directory_size_by_glob(Path::new(&path), &glob_set, Some(&cancel));
-        remove_job(job_id);
+        let r = do_get_directory_size_by_glob(Path::new(&dir), &glob_set, cancel_clone.as_ref());
+        if let Some(jid) = job_id {
+            remove_job(jid as u64);
+        }
         r
     })
     .await

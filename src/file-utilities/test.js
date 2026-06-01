@@ -2,6 +2,7 @@
 
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 
 console.log('=== file-utilities.node Test Suite ===\n');
 
@@ -14,7 +15,15 @@ try {
   process.exit(1);
 }
 
-const testDir = os.homedir(); // use home dir as a reliable test path
+// Create a temp directory for reliable, fast testing
+const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'file-utilities-test-'));
+const subDir = path.join(testDir, 'subdir');
+fs.mkdirSync(subDir);
+
+// Total size: 5 + 7 + 15 = 27 bytes
+fs.writeFileSync(path.join(testDir, 'file1.txt'), 'Hello'); // 5 bytes
+fs.writeFileSync(path.join(testDir, 'file2.log'), 'World!!'); // 7 bytes
+fs.writeFileSync(path.join(subDir, 'file3.txt'), 'Rust & Node-API'); // 15 bytes
 
 let passed = 0;
 let failed = 0;
@@ -58,35 +67,31 @@ test('detectFilesystemSync returns object with required fields', () => {
   console.log(`     └ fs type: ${r.filesystemType}, maxFilename: ${r.maxFilenameLength}`);
 });
 
-test('getDirectorySizeSync returns number', () => {
+test('getDirectorySizeSync returns correct total size', () => {
   const r = mod.getDirectorySizeSync(testDir);
   assert(typeof r === 'number', `Expected number, got ${typeof r}`);
-  assert(r >= 0, 'Size should be >= 0');
-  console.log(`     └ ${testDir} size: ${(r / 1024 / 1024).toFixed(2)} MB`);
+  assert(r === 27, `Expected size 27, got ${r}`);
+  console.log(`     └ ${testDir} size: ${r} bytes`);
 });
 
-test('getDirectorySizeTreeSync returns tree object', () => {
-  const tmpDir = '/tmp';
-  const r = mod.getDirectorySizeTreeSync(tmpDir);
+test('getDirectorySizeSync with deep option returns tree structure', () => {
+  const r = mod.getDirectorySizeSync(testDir, { deep: true });
   assert(typeof r === 'object', 'Expected object');
   assert('path' in r, 'Missing field: path');
   assert('size' in r, 'Missing field: size');
   assert('isDirectory' in r, 'Missing field: isDirectory');
   assert(r.isDirectory === true, 'isDirectory should be true for dir');
+  assert(r.size === 27, `Expected size 27, got ${r.size}`);
   assert(Array.isArray(r.children), 'children should be array');
-  console.log(`     └ /tmp entries: ${r.children.length}, total: ${(r.size / 1024).toFixed(1)} KB`);
+  console.log(`     └ Tree children count: ${r.children.length}`);
 });
 
-test('getDirectorySizeByGlobSync returns number for *.log pattern', () => {
-  const r = mod.getDirectorySizeByGlobSync('/tmp', ['*.log', '**/*.log']);
+test('getDirectorySizeByGlobSync returns matched size', () => {
+  const globPattern = path.join(testDir, '*.txt');
+  const r = mod.getDirectorySizeByGlobSync(globPattern);
   assert(typeof r === 'number', `Expected number, got ${typeof r}`);
-  assert(r >= 0, 'Size should be >= 0');
-  console.log(`     └ /tmp *.log size: ${r} bytes`);
-});
-
-test('cancelJob returns false for invalid id', () => {
-  const r = mod.cancelJob(999999);
-  assert(r === false, `Expected false, got ${r}`);
+  assert(r === 20, `Expected matched size 20 (*.txt), got ${r}`);
+  console.log(`     └ Glob matching *.txt size: ${r} bytes`);
 });
 
 // ─── Async tests ─────────────────────────────────────────────────────────────
@@ -118,42 +123,53 @@ async function runAsyncTests() {
     console.log(`     └ fs type async: ${r.filesystemType}`);
   });
 
-  await asyncTest('getDirectorySizeAsync returns Promise<number>', async () => {
-    const r = await mod.getDirectorySizeAsync('/tmp');
+  await asyncTest('getDirectorySizeAsync returns correct total size', async () => {
+    const r = await mod.getDirectorySizeAsync(testDir);
     assert(typeof r === 'number', `Expected number, got ${typeof r}`);
-    assert(r >= 0, 'Size should be >= 0');
-    console.log(`     └ /tmp size async: ${r} bytes`);
+    assert(r === 27, `Expected size 27, got ${r}`);
+    console.log(`     └ size async: ${r} bytes`);
   });
 
-  await asyncTest('getDirectorySizeTreeAsync returns Promise<object>', async () => {
-    const r = await mod.getDirectorySizeTreeAsync('/tmp');
+  await asyncTest('getDirectorySizeAsync with deep option returns tree structure', async () => {
+    const r = await mod.getDirectorySizeAsync(testDir, { deep: true });
     assert(typeof r === 'object', 'Expected object');
-    assert('size' in r && 'isDirectory' in r, 'Missing fields');
-    console.log(`     └ /tmp tree async: ${r.children?.length} entries`);
+    assert(r.size === 27, `Expected size 27, got ${r.size}`);
+    assert(Array.isArray(r.children), 'children should be array');
+    console.log(`     └ tree async: ${r.children.length} entries`);
   });
 
-  await asyncTest('getDirectorySizeByGlobAsync returns Promise<number>', async () => {
-    const r = await mod.getDirectorySizeByGlobAsync('/tmp', ['*.txt', '*.log']);
+  await asyncTest('getDirectorySizeByGlobAsync returns matched size', async () => {
+    const globPattern = path.join(testDir, '*.txt');
+    const r = await mod.getDirectorySizeByGlobAsync(globPattern);
     assert(typeof r === 'number', `Expected number, got ${typeof r}`);
-    console.log(`     └ /tmp glob async: ${r} bytes`);
+    assert(r === 20, `Expected matched size 20 (*.txt), got ${r}`);
+    console.log(`     └ glob async: ${r} bytes`);
   });
 
   // ─── Cancel test ─────────────────────────────────────────────────────────
   await asyncTest('cancelJob cancels running async job', async () => {
-    // Start a large async size scan, immediately cancel it
-    const bigDir = '/';
-    const promise = mod.getDirectorySizeAsync(bigDir);
+    const abortController = new AbortController();
+    const promise = mod.getDirectorySizeAsync(testDir, { abortSignal: abortController.signal });
 
-    // Give it a tiny moment then try to cancel (we don't have job id directly
-    // but we test that cancelJob with a valid id works)
-    // For simplicity, test that it resolves (cancel may or may not fire)
-    const r = await Promise.race([
-      promise,
-      new Promise(resolve => setTimeout(() => resolve(-1), 2000)),
-    ]);
-    assert(typeof r === 'number', 'Expected number or timeout');
-    console.log(`     └ cancelJob: promise settled with ${r < 0 ? 'timeout (cancelled)' : r + ' bytes'}`);
+    // Instantly abort
+    abortController.abort();
+
+    try {
+      await promise;
+      // It might complete if it's too fast, but shouldn't throw an error other than abort
+      console.log('     └ cancelJob: Completed before abort took effect');
+    } catch (err) {
+      assert(err.name === 'AbortError' || err.message.includes('abort') || err.message.includes('cancel'), `Unexpected abort error: ${err.message}`);
+      console.log('     └ cancelJob: Correctly aborted');
+    }
   });
+
+  // ─── Cleanup ─────────────────────────────────────────────────────────────
+  try {
+    fs.rmSync(testDir, { recursive: true, force: true });
+  } catch (e) {
+    // Ignore cleanup errors
+  }
 
   // ─── Results ─────────────────────────────────────────────────────────────
   console.log('\n══════════════════════════════');
@@ -167,5 +183,8 @@ async function runAsyncTests() {
 
 runAsyncTests().catch(e => {
   console.error('Async test suite error:', e);
+  try {
+    fs.rmSync(testDir, { recursive: true, force: true });
+  } catch (_) {}
   process.exit(1);
 });

@@ -21,7 +21,7 @@ const patches = {
   },
   'file-utils/index.js': {
     search: `  } else {\n    return {error: 'not support'};\n  }`,
-    replace: `  } else if (process.platform === 'linux'){\n    if (process.arch === 'x64') {\n      return require('./linux/file-utils.node');\n    }\n    return {error: 'linux architecture not supported'};\n  } else {\n    return {error: 'not support'};\n  }`
+    replace: `  } else if (process.platform === 'linux'){\n    if (process.arch === 'x64') {\n      return require('./linux/file-utils.node');\n    }\n  } else {\n    return {error: 'not support'};\n  }`
   },
   'mp4thumb/index.js': {
     search: `        else {\n            if(process.arch === 'arm64'){`,

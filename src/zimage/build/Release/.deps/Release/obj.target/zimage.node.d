@@ -1,1 +1,0 @@
-cmd_Release/obj.target/zimage.node := g++ -o Release/obj.target/zimage.node -shared -pthread -rdynamic -m64 -Wl,-rpath,'$$ORIGIN' -Wl,-rpath,'$$ORIGIN/../linux_x64'  -Wl,-soname=zimage.node -Wl,--start-group Release/obj.target/zimage/src/addon.o Release/obj.target/node_modules/node-addon-api/nothing.a -Wl,--end-group -lvips -lgio-2.0 -lgobject-2.0 -lglib-2.0

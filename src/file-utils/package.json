@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Re-impl of file-utils for Linux",
   "main": "file-utils.js",
+  "scripts": {
+    "build": "node build.js"
+  },
   "license": "ISC",
   "dependencies": {
     "node-addon-api": "6.1.0"

@@ -37,7 +37,7 @@ if (process.argv.includes('clean')) {
     if (!fs.existsSync(fullPath)) continue;
 
     // Folders to clean
-    const cleanDirs = ['build', 'target', 'node_modules', 'linux_x64'];
+    const cleanDirs = ['build', 'target', 'node_modules', 'linux_x64', 'linux'];
     for (const d of cleanDirs) {
       const p = path.join(fullPath, d);
       if (fs.existsSync(p)) {
@@ -182,7 +182,7 @@ for (const mod of modules) {
   try {
     // A. Compilation
     if ((mod.type === 'gyp' && mod.name !== 'db-cross-v4') || (mod.type === 'gyp-custom' && mod.name !== 'db-cross-v4')) {
-      runCmd('npm install --no-audit --no-fund', mod.buildDir);
+      runCmd('npm install --ignore-scripts --no-audit --no-fund', mod.buildDir);
       runCmd(`npx node-gyp rebuild --target=${ELECTRON_VERSION} --arch=${ELECTRON_ARCH} --dist-url=${ELECTRON_DIST_URL}`, mod.buildDir);
     } else if (mod.type === 'rust') {
       runCmd('cargo build --release', mod.buildDir);

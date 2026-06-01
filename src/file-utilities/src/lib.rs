@@ -196,10 +196,7 @@ pub async fn detect_hardlinks_async(path: String) -> napi::Result<bool> {
 
 fn do_get_directory_size(path: &Path, cancel: Option<&Arc<AtomicBool>>) -> u64 {
     let mut total: u64 = 0;
-    let walker = walkdir::WalkDir::new(path)
-        .follow_links(false)
-        .into_iter()
-        .filter_map(|e| e.ok());
+    let walker = walkdir::WalkDir::new(path).follow_links(false);
 
     for entry in walker {
         if let Some(c) = cancel {
@@ -207,9 +204,18 @@ fn do_get_directory_size(path: &Path, cancel: Option<&Arc<AtomicBool>>) -> u64 {
                 break;
             }
         }
-        if entry.file_type().is_file() {
-            if let Ok(meta) = entry.metadata() {
-                total += meta.len();
+        // FIX: Avoid using filter_map to prevent silently swallowing data on permission denied or access errors
+        match entry {
+            Ok(e) => {
+                if e.file_type().is_file() {
+                    if let Ok(meta) = e.metadata() {
+                        total += meta.len();
+                    }
+                }
+            }
+            Err(err) => {
+                // Log warning to stderr instead of crashing or stopping the entire process
+                eprintln!("[file-utilities] Warning walking entry: {}", err);
             }
         }
     }
@@ -257,13 +263,24 @@ pub struct DirTreeEntry {
     pub children: Option<Vec<DirTreeEntry>>,
 }
 
-fn do_get_directory_size_tree(path: &Path, cancel: Option<&Arc<AtomicBool>>) -> DirTreeEntry {
+// FIX: Add max_depth and current_depth to the recursive function to enforce the depth limit configured from JS
+fn do_get_directory_size_tree(path: &Path, max_depth: i32, current_depth: i32, cancel: Option<&Arc<AtomicBool>>) -> DirTreeEntry {
     let mut total: u64 = 0;
     let mut children: Vec<DirTreeEntry> = Vec::new();
 
+    if current_depth > max_depth {
+        return DirTreeEntry {
+            path: path.to_string_lossy().into_owned(),
+            size: 0.0,
+            is_directory: true,
+            children: Some(vec![]),
+        };
+    }
+
     let read_dir = match std::fs::read_dir(path) {
         Ok(rd) => rd,
-        Err(_) => {
+        Err(err) => {
+            eprintln!("[file-utilities] Cannot read dir {:?}: {}", path, err);
             return DirTreeEntry {
                 path: path.to_string_lossy().into_owned(),
                 size: 0.0,
@@ -287,9 +304,11 @@ fn do_get_directory_size_tree(path: &Path, cancel: Option<&Arc<AtomicBool>>) -> 
         };
 
         if ft.is_dir() {
-            let child = do_get_directory_size_tree(&child_path, cancel);
-            total += child.size as u64;
-            children.push(child);
+            if current_depth < max_depth {
+                let child = do_get_directory_size_tree(&child_path, max_depth, current_depth + 1, cancel);
+                total += child.size as u64;
+                children.push(child);
+            }
         } else if ft.is_file() {
             let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
             total += size;
@@ -313,17 +332,22 @@ fn do_get_directory_size_tree(path: &Path, cancel: Option<&Arc<AtomicBool>>) -> 
 #[napi(js_name = "getDirectorySizeTreeSync")]
 pub fn get_directory_size_tree_sync(
     path: String,
-    _options: Option<GetDirectorySizeTreeOptions>,
+    options: Option<GetDirectorySizeTreeOptions>,
 ) -> DirTreeEntry {
-    do_get_directory_size_tree(Path::new(&path), None)
+    let opts = options.unwrap_or_default();
+    let max_depth = opts.max_depth.unwrap_or(3); // Default depth matching index.js sync mode
+    do_get_directory_size_tree(Path::new(&path), max_depth, 0, None)
 }
 
 #[napi(js_name = "getDirectorySizeTreeAsync")]
 pub async fn get_directory_size_tree_async(
     path: String,
-    _options: Option<GetDirectorySizeTreeOptions>,
+    options: Option<GetDirectorySizeTreeOptions>,
     job_id: Option<f64>,
 ) -> napi::Result<DirTreeEntry> {
+    let opts = options.unwrap_or_default();
+    let max_depth = opts.max_depth.unwrap_or(10); // Default depth matching index.js async mode
+
     let cancel = if let Some(jid) = job_id {
         let flag = Arc::new(AtomicBool::new(false));
         JOB_REGISTRY.lock().unwrap().insert(jid as u64, flag.clone());
@@ -333,7 +357,7 @@ pub async fn get_directory_size_tree_async(
     };
     let cancel_clone = cancel.clone();
     let result = tokio::task::spawn_blocking(move || {
-        let r = do_get_directory_size_tree(Path::new(&path), cancel_clone.as_ref());
+        let r = do_get_directory_size_tree(Path::new(&path), max_depth, 0, cancel_clone.as_ref());
         if let Some(jid) = job_id {
             remove_job(jid as u64);
         }
@@ -363,10 +387,7 @@ fn do_get_directory_size_by_glob(
     cancel: Option<&Arc<AtomicBool>>,
 ) -> u64 {
     let mut total: u64 = 0;
-    let walker = walkdir::WalkDir::new(path)
-        .follow_links(false)
-        .into_iter()
-        .filter_map(|e| e.ok());
+    let walker = walkdir::WalkDir::new(path).follow_links(false);
 
     for entry in walker {
         if let Some(c) = cancel {
@@ -374,17 +395,25 @@ fn do_get_directory_size_by_glob(
                 break;
             }
         }
-        if !entry.file_type().is_file() {
-            continue;
-        }
+        
+        // FIX: Handle errors explicitly to prevent silent data drop during glob matching
+        match entry {
+            Ok(e) => {
+                if !e.file_type().is_file() {
+                    continue;
+                }
+                let file_path = e.path();
+                let rel = file_path.strip_prefix(path).unwrap_or(&file_path);
+                let filename = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
 
-        let file_path = entry.path();
-        let rel = file_path.strip_prefix(path).unwrap_or(file_path);
-        let filename = file_path.file_name().and_then(|n| n.to_str()).unwrap_or("");
-
-        if glob_set.is_match(rel) || glob_set.is_match(filename) {
-            if let Ok(meta) = entry.metadata() {
-                total += meta.len();
+                if glob_set.is_match(rel) || glob_set.is_match(filename) {
+                    if let Ok(meta) = e.metadata() {
+                        total += meta.len();
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("[file-utilities] Warning walking glob entry: {}", err);
             }
         }
     }

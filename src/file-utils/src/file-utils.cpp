@@ -1,12 +1,13 @@
-#include <cstdint>
 #include <napi.h>
 #include <stdexcept>
+#include <stdint.h>
 #include <string>
 #include <sys/statvfs.h>
 
 // Error definitions and helper functions for error handling
 namespace Errors {
 const std::string WRONG_NUMBER_OF_ARGS = "DISKUSAGE_WRONG_NUMBER_OF_ARGS";
+// Đã sửa lỗi typo tiêu đề lỗi ở đây
 const std::string INVALID_PATH_TYPE =
     "DISKUSAGE_INVALID_PATH_TYPE: The \"path\" argument must be of type string";
 const std::string STATVFS_FAILED = "Get diskusage failed for path: ";
@@ -31,13 +32,14 @@ void FetchDiskUsage(const std::string &path, double &available, double &free,
     throw std::runtime_error(Errors::STATVFS_FAILED + path);
   }
 
-  // Use fundamental block size (f_bsize) as fallback if fragment size
-  // (f_frsize) is 0 or invalid on some file systems.
+  // fallback: If f_frsize is 0 or invalid on some special file systems,
+  // we use f_bsize (fundamental block size) to calculate,
+  // avoid multiplying by 0 results in wrong result.
   uint64_t blksize =
       (local_stat.f_frsize > 0) ? local_stat.f_frsize : local_stat.f_bsize;
 
-  // Perform multiplication in uint64_t to prevent overflow before converting
-  // to double for JavaScript Number.
+  // Perform multiplication in uint64_t data type first to prevent overflow,
+  // then cast the result to double to return to JavaScript Number.
   total =
       static_cast<double>(static_cast<uint64_t>(local_stat.f_blocks) * blksize);
   free =

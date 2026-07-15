@@ -1,0 +1,6 @@
+decompile/** linguist-vendored
+**/build/** linguist-vendored
+**/target/** linguist-vendored
+**/node_modules/** linguist-vendored
+**/linux{,*}/** linguist-vendored
+**/package-lock.json linguist-vendored

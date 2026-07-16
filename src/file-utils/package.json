@@ -2,12 +2,15 @@
   "name": "re-impl-file-utils",
   "version": "1.0.0",
   "description": "Re-impl of file-utils for Linux",
-  "main": "file-utils.js",
+  "main": "index.js",
   "scripts": {
-    "build": "node build.js"
+    "build": "cargo build --release",
+    "build:debug": "cargo build"
   },
+  "author": "DMKha",
   "license": "ISC",
-  "dependencies": {
-    "node-addon-api": "^5.0.0"
-  }
+  "files": [
+    "index.js",
+    "*.node"
+  ]
 }

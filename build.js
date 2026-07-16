@@ -7,9 +7,7 @@ build.js - build all native libraries for Linux
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-if (!process.argv.includes('--skip-patch')) {
-  const { patchFile } = require('./src/patch-js-helper');
-}
+const { patchFile } = require('./src/patch-js-helper');
 
 const ROOT_DIR = path.resolve(__dirname, '.');
 const NATIVELIBS_BUILD_DIR = path.resolve(ROOT_DIR);
@@ -53,7 +51,7 @@ if (process.argv.includes('clean')) {
     try {
       const files = fs.readdirSync(fullPath);
       for (const f of files) {
-        if (f.endsWith('.node') || (dir === 'mp4thumb' && f.endsWith('.jpg'))) {
+        if (f.endsWith('.node') || (dir === 'mp4thumb' && f.endsWith('.jpg')) || f === 'Cargo.lock' || f === 'package-lock.json') {
           const p = path.join(fullPath, f);
           console.log(`  Deleting file: ${path.relative(ROOT_DIR, p)}`);
           fs.unlinkSync(p);
@@ -128,9 +126,9 @@ const modules = [
   },
   {
     name: 'file-utils',
-    type: 'gyp',
+    type: 'rust',
     buildDir: path.join(NATIVELIBS_BUILD_DIR, 'src', 'file-utils'),
-    srcBinary: path.join(NATIVELIBS_BUILD_DIR, 'src', 'file-utils', 'build', 'Release', 'file-utils.node'),
+    srcBinary: path.join(NATIVELIBS_BUILD_DIR, 'src', 'file-utils', 'target', 'release', 'libfile_utils.so'),
     destBinary: path.join(DEST_DIR, 'file-utils', 'linux', 'file-utils.node'),
     wrappers: [
       { relPath: 'file-utils/index.js', dest: path.join(DEST_DIR, 'file-utils', 'index.js') }

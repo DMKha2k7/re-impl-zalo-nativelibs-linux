@@ -4,3 +4,5 @@ decompile/** linguist-vendored
 **/node_modules/** linguist-vendored
 **/linux{,*}/** linguist-vendored
 **/package-lock.json linguist-vendored
+**/Cargo.lock linguist-vendored
+**/target/** linguist-vendored

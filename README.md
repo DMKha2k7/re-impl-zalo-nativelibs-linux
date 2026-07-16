@@ -4,8 +4,8 @@ This repository contains the Re-impl source code from C decompile code with Ghid
 
 # 🔴 Status
 - ✅ db-cross-v4: working, thanks for realdtn2's RE db-cross-v4 ([realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026))
-- ❌ file-utilities: Planned, In Progress
-- ❌ file-utils: Planned, In Progress
+- ❌ file-utilities: In Progress
+- ✅ file-utils: working, Experimental
 - ✅ logger: working (native support)
 - ❌ mp4thumb: Planned, In Progress
 - ✅ sqlite3: working (add native Linux libs to Zalo's nativelibs)
@@ -104,7 +104,7 @@ npm install
 npm run build
 ```
 
-With skipping js patch, run `npm run build` with `--skip-patch` parameter.
+**With skipping js patch, run `npm run build-skip-patch` instead of `npm run build`.**
 
 Once the process completes, the structured distribution-ready native addons will be located in the destination folder.
 The default destination folder is `nativelibs`.

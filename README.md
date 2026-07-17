@@ -4,7 +4,7 @@ This repository contains the Re-impl source code from C decompile code with Ghid
 
 # 🔴 Status
 - ✅ db-cross-v4: working, thanks for realdtn2's RE db-cross-v4 ([realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026))
-- ❌ file-utilities: In Progress
+- ✅ file-utilities: working, Experimental (need to refresh in Storage Management Settings after patch)
 - ✅ file-utils: working, Experimental
 - ✅ logger: working (native support)
 - ❌ mp4thumb: Planned, In Progress
@@ -120,8 +120,8 @@ The default destination folder is `nativelibs`.
 The orchestration script performs the following automated steps upon running `npm run build`:
 
 1. **Compilation**:
-   * Runs `node-gyp rebuild` for C++ modules (`file-utils`, `mp4thumb`, `zimage`, `zjxl`).
-   * Runs `cargo build --release` for Rust modules (`file-utilities`).
+   * Runs `node-gyp rebuild` for C++ modules (`mp4thumb`, `zimage`, `zjxl`).
+   * Runs `cargo build --release` for Rust modules (`file-utilities`, `file-utils`).
 2. **Live JS Wrapper Patching**:
    * `patch-js-helper.js` reads the original macOS JS wrappers from the `nativelibs-macOS` folder.
    * Modifies them in-memory to inject `process.platform === 'linux'` switches and correct relative `.node` paths before saving them to the destination. This eliminates the need to maintain static pre-patched wrapper files.

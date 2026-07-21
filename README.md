@@ -10,7 +10,7 @@ This repository contains the Re-impl source code from C decompile code with Ghid
 - ❌ mp4thumb: Planned, In Progress
 - ✅ sqlite3: working (add native Linux libs to Zalo's nativelibs)
 - ❌ v8-profiles: Not planned
-- ❌ zcall: Not planned (requires ZallCall from the Qt ZaloHelper Process)
+- ❌ zcall: Not planned (requires ZaloCall from the Qt ZaloHelper Process)
 - ❌ zfile: Not needed (Only Windows needs this nativelib)
 - ❌ zimage: Planned, In Progress
 - ❌ zjxl: Planned, In Progress (jxl nativelibs shipped with Linux `.so` libs)
@@ -114,7 +114,7 @@ The default destination folder is `nativelibs`.
 # ⚙️ How It Works
 ## Re-impl nativelibs to Linux from macOS x64
 ### 1. Decompile macOS x64 nativelibs with Ghidra and export decompiled C code (decompile/*-decompile.c)
-### 2. Re-impl with C++ or Rust (by the original language)
+### 2. Re-impl with C++ or Rust
 
 ## Build Process
 The orchestration script performs the following automated steps upon running `npm run build`:

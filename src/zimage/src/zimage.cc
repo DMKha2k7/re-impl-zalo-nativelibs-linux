@@ -1,5 +1,7 @@
 #include <napi.h>
 
+#include <vips/vips.h>
+#include <vips/vector.h>
 #include <vips/vips8>
 
 #include <mutex>
@@ -24,9 +26,11 @@ void InitializeVipsOnce() {
     return;
   }
 
-  vips_cache_set_max_mem(0);
-  vips_cache_set_max_files(0);
-  vips_cache_set_max(0);
+  vips_concurrency_set(2);
+  vips_vector_set_enabled(true);
+  vips_cache_set_max(100);
+  vips_cache_set_max_mem(50 * 1024 * 1024);
+  vips_cache_set_max_files(20);
   vips_initialized = true;
 }
 

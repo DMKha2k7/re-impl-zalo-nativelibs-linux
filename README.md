@@ -4,15 +4,15 @@ This repository contains the Re-impl source code from C decompile code with Ghid
 
 # 🔴 Status
 - ✅ db-cross-v4: working, thanks for realdtn2's RE db-cross-v4 ([realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026))
-- ✅ file-utilities: working, Experimental (need to refresh in Storage Management Settings after patch)
-- ✅ file-utils: working, Experimental
+- ✅ file-utilities: working (need to refresh in Storage Management Settings after patch)
+- ✅ file-utils: working
 - ✅ logger: working (native support)
 - ❌ mp4thumb: Planned, In Progress
 - ✅ sqlite3: working (add native Linux libs to Zalo's nativelibs)
 - ❌ v8-profiles: Not planned
 - ❌ zcall: Not planned (requires ZaloCall from the Qt ZaloHelper Process)
 - ❌ zfile: Not needed (Only Windows needs this nativelib)
-- ❌ zimage: Planned, In Progress
+- ⚠️ zimage: working, low performance, jpeg file fallback (timeout)
 - ❌ zjxl: Planned, In Progress (jxl nativelibs shipped with Linux `.so` libs)
 - ❌ zwalker: Planned for later
 

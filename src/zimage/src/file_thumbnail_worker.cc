@@ -18,7 +18,6 @@ std::string VipsErrorMessage() {
 
 void ReleaseImage(VipsImage* image) {
   if (image != nullptr) {
-    vips_image_set_kill(image, TRUE);
     g_object_unref(image);
   }
 }

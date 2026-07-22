@@ -117,8 +117,8 @@ The default destination folder is `nativelibs`.
 The orchestration script performs the following automated steps upon running `npm run build`:
 
 1. **Compilation**:
-   * Runs `node-gyp rebuild` for C++ modules (`mp4thumb`, `zimage`, `zjxl`).
-   * Runs `cargo build --release` for Rust modules (`file-utilities`, `file-utils`).
+   * Runs `node-gyp rebuild` for C++ modules (`mp4thumb`, , `zjxl`).
+   * Runs `cargo build --release` for Rust modules (`file-utilities`, `file-utils`, `zimage`).
 2. **Live JS Wrapper Patching**:
    * `patch-js-helper.js` reads the original macOS JS wrappers from the `nativelibs-macOS` folder.
    * Modifies them in-memory to inject `process.platform === 'linux'` switches and correct relative `.node` paths before saving them to the destination. This eliminates the need to maintain static pre-patched wrapper files.

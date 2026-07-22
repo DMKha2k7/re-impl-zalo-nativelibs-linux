@@ -38,12 +38,23 @@ FileThumbnailWorker::FileThumbnailWorker(const Napi::Function& callback,
 void FileThumbnailWorker::Execute() {
   VipsImage* thumbnail = nullptr;
   if (vips_thumbnail(input_path_.c_str(), &thumbnail, width_, "height",
-                     height_, "size", VIPS_SIZE_FORCE, nullptr) != 0) {
+                     height_, "size", VIPS_SIZE_FORCE, "no_rotate", TRUE,
+                     "fail_on", VIPS_FAIL_ON_NONE, nullptr) != 0) {
     SetError(VipsErrorMessage());
     return;
   }
 
-  if (vips_image_write_to_file(thumbnail, output_path_.c_str(), nullptr) !=
+  std::string target_path = output_path_;
+  if (target_path.find('[') == std::string::npos) {
+    if (target_path.size() >= 4) {
+      std::string ext = target_path.substr(target_path.size() - 4);
+      if (ext == ".png" || ext == ".PNG") {
+        target_path += "[compression=1,filter=none,palette=false,strip=true]";
+      }
+    }
+  }
+
+  if (vips_image_write_to_file(thumbnail, target_path.c_str(), nullptr) !=
       0) {
     ReleaseImage(thumbnail);
     SetError(VipsErrorMessage());

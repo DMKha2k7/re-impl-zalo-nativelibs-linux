@@ -26,11 +26,11 @@ void InitializeVipsOnce() {
     return;
   }
 
-  vips_concurrency_set(2);
+  vips_concurrency_set(0);
   vips_vector_set_enabled(true);
   vips_cache_set_max(100);
-  vips_cache_set_max_mem(50 * 1024 * 1024);
-  vips_cache_set_max_files(20);
+  vips_cache_set_max_mem(100 * 1024 * 1024);
+  vips_cache_set_max_files(50);
   vips_initialized = true;
 }
 

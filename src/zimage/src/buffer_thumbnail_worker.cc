@@ -54,7 +54,8 @@ void BufferThumbnailWorker::Execute() {
 
   if (vips_thumbnail_buffer(const_cast<char*>(input_data_), input_length_,
                             &thumbnail, width_, "height", height_, "size",
-                            VIPS_SIZE_FORCE, nullptr) != 0) {
+                            VIPS_SIZE_FORCE, "no_rotate", TRUE, "fail_on",
+                            VIPS_FAIL_ON_NONE, nullptr) != 0) {
     SetError(VipsErrorMessage());
     return;
   }
@@ -80,7 +81,7 @@ void BufferThumbnailWorker::Execute() {
 
     void* encoded = nullptr;
     if (vips_jpegsave_buffer(thumbnail, &encoded, &output_length_, "strip",
-                             TRUE, nullptr) != 0) {
+                             TRUE, "Q", 80, nullptr) != 0) {
       ReleaseImage(thumbnail);
       SetError(VipsErrorMessage());
       return;
@@ -88,7 +89,7 @@ void BufferThumbnailWorker::Execute() {
     output_data_ = static_cast<char*>(encoded);
   } else {
     void* encoded = nullptr;
-    if (vips_pngsave_buffer(thumbnail, &encoded, &output_length_, nullptr) !=
+    if (vips_image_write_to_buffer(thumbnail, ".png[compression=1,filter=none,palette=false,strip=true]", &encoded, &output_length_, nullptr) !=
         0) {
       ReleaseImage(thumbnail);
       SetError(VipsErrorMessage());

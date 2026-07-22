@@ -7,16 +7,22 @@ const ELECTRON_VERSION = '22.3.27';
 const ELECTRON_DIST_URL = 'https://electronjs.org/headers';
 const ELECTRON_ARCH = 'x64';
 
+const VIPS_TAR_URL = 'https://github.com/lovell/sharp-libvips/releases/download/v8.14.5/libvips-8.14.5-linux-x64.tar.gz';
+const TAR_FILE_NAME = 'libvips-8.14.5-linux-x64.tar.gz';
+
 const PROJECT_ROOT = __dirname;
 const TEMP_DIR = path.join(PROJECT_ROOT, 'temp');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'linux_x64');
-const LIB_DIR = path.join(OUTPUT_DIR, 'lib');
+const TAR_PATH = path.join(PROJECT_ROOT, TAR_FILE_NAME);
+const INCLUDE_DIR = path.join(PROJECT_ROOT, 'include');
+const LIB_DIR = path.join(PROJECT_ROOT, 'lib');
 const NODE_FILE = path.join(PROJECT_ROOT, 'build', 'Release', 'zimage.node');
+const VIPS_SO_FILE = path.join(LIB_DIR, 'libvips-cpp.so.42');
 
 function cleanUp() {
   console.log('Cleaning up old build artifacts...');
-  const dirsToClean = [TEMP_DIR, 'include', 'lib', 'build', OUTPUT_DIR];
-  for (const item of dirsToClean) {
+  const itemsToClean = [TEMP_DIR, INCLUDE_DIR, LIB_DIR, 'build', OUTPUT_DIR, TAR_PATH];
+  for (const item of itemsToClean) {
     const fullPath = path.isAbsolute(item) ? item : path.join(PROJECT_ROOT, item);
     if (fs.existsSync(fullPath)) {
       fs.rmSync(fullPath, { recursive: true, force: true });
@@ -24,128 +30,57 @@ function cleanUp() {
   }
 }
 
-// System base libraries to exclude from copying
-const IGNORED_PREFIXES = [
-  'linux-vdso',
-  'libc.',
-  'libm.',
-  'libpthread',
-  'libdl.',
-  'librt.',
-  'ld-linux',
-  'libgcc_s',
-  'libstdc++',
-  'libselinux',
-  'libmount',
-  'libblkid',
-  'libseccomp',
-  'libcrypt.',
-  'libresolv',
-  'libudev'
-];
-
-function isIgnored(basename) {
-  return IGNORED_PREFIXES.some((prefix) => basename.startsWith(prefix));
+function downloadTar() {
+  console.log(`Downloading ${VIPS_TAR_URL}...`);
+  execSync(`curl -L -s -S -o "${TAR_PATH}" "${VIPS_TAR_URL}"`, { cwd: PROJECT_ROOT });
 }
 
-function getLddDependencies(filePath) {
-  const deps = [];
-  try {
-    const output = execSync(`ldd "${filePath}"`, { encoding: 'utf8' });
-    const lines = output.split('\n');
-    for (const line of lines) {
-      const match = line.match(/=>\s+(\/\S+)/) || line.trim().match(/^(\/\S+)/);
-      if (match && match[1]) {
-        deps.push(match[1]);
-      }
-    }
-  } catch (err) {
-    console.warn(`Warning: Could not run ldd on ${filePath}: ${err.message}`);
-  }
-  return deps;
+function extractTar() {
+  console.log('Extracting include and lib folders from tar archive...');
+  execSync(`tar -xzf "${TAR_PATH}" include lib`, { cwd: PROJECT_ROOT });
 }
 
-function collectUniqueSharedLibs(rootNodeFile) {
-  const visited = new Set();
-  const queue = [rootNodeFile];
-  const sharedLibsMap = new Map(); // soname -> real absolute file path
-
-  while (queue.length > 0) {
-    const currentFile = queue.shift();
-    if (visited.has(currentFile)) continue;
-    visited.add(currentFile);
-
-    const deps = getLddDependencies(currentFile);
-    for (const depPath of deps) {
-      const soname = path.basename(depPath);
-      if (isIgnored(soname)) continue;
-
-      try {
-        const realPath = fs.realpathSync(depPath);
-        if (!sharedLibsMap.has(soname)) {
-          sharedLibsMap.set(soname, realPath);
-        }
-        if (!visited.has(realPath)) {
-          queue.push(realPath);
-        }
-      } catch (err) {
-        console.warn(`Could not resolve real path for ${depPath}: ${err.message}`);
-      }
-    }
-  }
-
-  return sharedLibsMap;
+function buildAddon() {
+  console.log('Building zimage using libvips-cpp...');
+  execSync(
+    `npx node-gyp rebuild --target=${ELECTRON_VERSION} --arch=${ELECTRON_ARCH} --dist-url=${ELECTRON_DIST_URL}`,
+    { stdio: 'inherit', cwd: PROJECT_ROOT }
+  );
 }
 
-function copySharedLibrariesToLibDir(sharedLibsMap, destLibDir) {
-  if (!fs.existsSync(destLibDir)) {
-    fs.mkdirSync(destLibDir, { recursive: true });
+function shipArtifacts() {
+  if (!fs.existsSync(NODE_FILE)) {
+    throw new Error(`Built addon file not found at ${NODE_FILE}`);
+  }
+  if (!fs.existsSync(VIPS_SO_FILE)) {
+    throw new Error(`libvips-cpp.so.42 not found at ${VIPS_SO_FILE}`);
   }
 
-  console.log(`Copying ${sharedLibsMap.size} unique shared libraries into ${destLibDir}...`);
-
-  for (const [soname, realPath] of sharedLibsMap.entries()) {
-    try {
-      const destPath = path.join(destLibDir, soname);
-      fs.copyFileSync(realPath, destPath);
-    } catch (err) {
-      console.error(`Failed to copy library ${soname} (from ${realPath}): ${err.message}`);
-    }
+  if (!fs.existsSync(OUTPUT_DIR)) {
+    fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   }
+
+  const targetNodePath = path.join(OUTPUT_DIR, 'zimage.node');
+  const targetSoPath = path.join(OUTPUT_DIR, 'libvips-cpp.so.42');
+
+  console.log(`Shipping ${NODE_FILE} -> ${targetNodePath}`);
+  fs.copyFileSync(NODE_FILE, targetNodePath);
+
+  console.log(`Shipping ${VIPS_SO_FILE} -> ${targetSoPath}`);
+  fs.copyFileSync(VIPS_SO_FILE, targetSoPath);
 }
 
 async function main() {
   try {
     cleanUp();
-
-    console.log('Building zimage using system libvips...');
-    execSync(
-      `npx node-gyp rebuild --target=${ELECTRON_VERSION} --arch=${ELECTRON_ARCH} --dist-url=${ELECTRON_DIST_URL}`,
-      { stdio: 'inherit', cwd: PROJECT_ROOT }
-    );
-
-    if (!fs.existsSync(NODE_FILE)) {
-      throw new Error(`Built addon file not found at ${NODE_FILE}`);
-    }
-
-    if (!fs.existsSync(OUTPUT_DIR)) {
-      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    }
-
-    // 1. Copy zimage.node into linux_x64/
-    const targetNodePath = path.join(OUTPUT_DIR, 'zimage.node');
-    console.log(`Copying ${NODE_FILE} -> ${targetNodePath}`);
-    fs.copyFileSync(NODE_FILE, targetNodePath);
-
-    // 2. Collect unique .so dependencies and copy directly into linux_x64/lib/
-    const sharedLibs = collectUniqueSharedLibs(NODE_FILE);
-    copySharedLibrariesToLibDir(sharedLibs, LIB_DIR);
+    downloadTar();
+    extractTar();
+    buildAddon();
+    shipArtifacts();
 
     console.log('🎉 Build completed successfully!');
-    console.log(`- Shipped Addon: ${targetNodePath}`);
-    const libFiles = fs.readdirSync(LIB_DIR);
-    console.log(`- Shipped Libraries: ${libFiles.length} files in ${LIB_DIR}`);
-
+    console.log(`- Shipped Addon: ${path.join(OUTPUT_DIR, 'zimage.node')}`);
+    console.log(`- Shipped Shared Library: ${path.join(OUTPUT_DIR, 'libvips-cpp.so.42')}`);
   } catch (error) {
     console.error('❌ Build failed:', error.message);
     process.exit(1);

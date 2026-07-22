@@ -12,7 +12,7 @@ This repository contains the Re-impl source code from C decompile code with Ghid
 - ❌ v8-profiles: Not planned
 - ❌ zcall: Not planned (requires ZaloCall from the Qt ZaloHelper Process)
 - ❌ zfile: Not needed (Only Windows needs this nativelib)
-- ⚠️ zimage: working, low performance, large image file fallback (timeout)
+- ✅ zimage: working, Experiment
 - ❌ zjxl: Planned, In Progress (jxl nativelibs shipped with Linux `.so` libs)
 - ❌ zwalker: Planned for later
 

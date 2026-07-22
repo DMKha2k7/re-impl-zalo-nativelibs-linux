@@ -30,7 +30,6 @@ sudo apt install -y \
   liblzma-dev \
   libbz2-dev \
   zlib1g-dev \
-  libvips-dev \
   libjxl-dev \
   libopencv-dev \
   libjpeg-dev \
@@ -52,7 +51,6 @@ sudo dnf install -y \
   xz-devel \
   bzip2-devel \
   zlib-devel \
-  vips-devel \
   libjxl-devel \
   opencv-devel \
   libjpeg-turbo-devel \
@@ -70,7 +68,6 @@ sudo pacman -S --needed \
   xz \
   bzip2 \
   zlib \
-  libvips \
   libjxl \
   opencv \
   libjpeg-turbo \
@@ -125,5 +122,4 @@ The orchestration script performs the following automated steps upon running `np
 2. **Live JS Wrapper Patching**:
    * `patch-js-helper.js` reads the original macOS JS wrappers from the `nativelibs-macOS` folder.
    * Modifies them in-memory to inject `process.platform === 'linux'` switches and correct relative `.node` paths before saving them to the destination. This eliminates the need to maintain static pre-patched wrapper files.
-3. **Shared Library Asset Gathering**:
-   * For complex dependencies in `zimage` and `zjxl`, the builder analyzes the compiled binary with `ldd` and executes a queue-based recursive trace. It copies all shared system library dependencies (`.so` files, e.g., OpenCV, libjxl, libvips) directly into the destination subdirectory, ensuring independent binary loading on client systems.
+

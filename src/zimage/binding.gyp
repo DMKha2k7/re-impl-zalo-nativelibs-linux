@@ -9,10 +9,7 @@
       ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
-        "<(module_root_dir)",
-        "<(module_root_dir)/include",
-        "<(module_root_dir)/include/glib-2.0",
-        "<(module_root_dir)/lib/glib-2.0/include"
+        "<(module_root_dir)"
       ],
       "dependencies": [
         "<!(node -p \"require('node-addon-api').gyp\")"
@@ -25,18 +22,21 @@
           "cflags_cc": [
             "-std=c++17",
             "-O2",
-            "-fexceptions"
+            "-fexceptions",
+            "<!@(pkg-config --cflags vips-cpp vips)"
           ],
           "libraries": [
-            "-L<(module_root_dir)/lib",
-            "-l:libvips-cpp.so.42"
+            "<!@(pkg-config --libs vips-cpp vips)"
           ],
           "ldflags": [
-            "-Wl,-rpath,$$ORIGIN",
-            "-Wl,-z,origin"
+            "-Wl,-rpath,'$$ORIGIN/lib'",
+            "-Wl,-rpath,'$$ORIGIN'",
+            "-Wl,-z,origin",
+            "-Wl,--disable-new-dtags"
           ]
         }]
       ]
     }
   ]
 }
+

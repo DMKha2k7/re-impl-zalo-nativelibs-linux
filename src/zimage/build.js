@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const { execSync } = require('child_process');
 
 // Electron target configuration
@@ -10,70 +9,145 @@ const ELECTRON_ARCH = 'x64';
 
 const PROJECT_ROOT = __dirname;
 const TEMP_DIR = path.join(PROJECT_ROOT, 'temp');
-const VIPS_TAR_URL = 'https://github.com/lovell/sharp-libvips/releases/download/v8.14.5/libvips-8.14.5-linux-x64.tar.gz';
-const VIPS_TAR_PATH = path.join(TEMP_DIR, 'libvips.tar.gz');
+const OUTPUT_DIR = path.join(PROJECT_ROOT, 'linux_x64');
+const LIB_DIR = path.join(OUTPUT_DIR, 'lib');
+const NODE_FILE = path.join(PROJECT_ROOT, 'build', 'Release', 'zimage.node');
 
-
-function downloadFile(url, destPath) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        return downloadFile(response.headers.location, destPath).then(resolve).catch(reject);
-      }
-
-      if (response.statusCode !== 200) {
-        return reject(new Error(`Download failed. Status Code: ${response.statusCode}`));
-      }
-
-      const fileStream = fs.createWriteStream(destPath);
-      response.pipe(fileStream);
-
-      fileStream.on('finish', () => {
-        fileStream.close();
-        resolve();
-      });
-
-      fileStream.on('error', (err) => {
-        fs.unlink(destPath, () => {});
-        reject(err);
-      });
-    }).on('error', reject);
-  });
-}
 function cleanUp() {
-  console.log('Cleaning up...');
-  if (fs.existsSync(TEMP_DIR)) {
-    fs.rmSync(TEMP_DIR, { recursive: true, force: true });
+  console.log('Cleaning up old build artifacts...');
+  const dirsToClean = [TEMP_DIR, 'include', 'lib', 'build', OUTPUT_DIR];
+  for (const item of dirsToClean) {
+    const fullPath = path.isAbsolute(item) ? item : path.join(PROJECT_ROOT, item);
+    if (fs.existsSync(fullPath)) {
+      fs.rmSync(fullPath, { recursive: true, force: true });
+    }
   }
-  if (fs.existsSync("include")) {
-    fs.rmSync("include", { recursive: true, force: true });
+}
+
+// System base libraries to exclude from copying
+const IGNORED_PREFIXES = [
+  'linux-vdso',
+  'libc.',
+  'libm.',
+  'libpthread',
+  'libdl.',
+  'librt.',
+  'ld-linux',
+  'libgcc_s',
+  'libstdc++',
+  'libselinux',
+  'libmount',
+  'libblkid',
+  'libseccomp',
+  'libcrypt.',
+  'libresolv',
+  'libudev'
+];
+
+function isIgnored(basename) {
+  return IGNORED_PREFIXES.some((prefix) => basename.startsWith(prefix));
+}
+
+function getLddDependencies(filePath) {
+  const deps = [];
+  try {
+    const output = execSync(`ldd "${filePath}"`, { encoding: 'utf8' });
+    const lines = output.split('\n');
+    for (const line of lines) {
+      const match = line.match(/=>\s+(\/\S+)/) || line.trim().match(/^(\/\S+)/);
+      if (match && match[1]) {
+        deps.push(match[1]);
+      }
+    }
+  } catch (err) {
+    console.warn(`Warning: Could not run ldd on ${filePath}: ${err.message}`);
   }
-  if (fs.existsSync("lib")) {
-    fs.rmSync("lib", { recursive: true, force: true });
+  return deps;
+}
+
+function collectUniqueSharedLibs(rootNodeFile) {
+  const visited = new Set();
+  const queue = [rootNodeFile];
+  const sharedLibsMap = new Map(); // soname -> real absolute file path
+
+  while (queue.length > 0) {
+    const currentFile = queue.shift();
+    if (visited.has(currentFile)) continue;
+    visited.add(currentFile);
+
+    const deps = getLddDependencies(currentFile);
+    for (const depPath of deps) {
+      const soname = path.basename(depPath);
+      if (isIgnored(soname)) continue;
+
+      try {
+        const realPath = fs.realpathSync(depPath);
+        if (!sharedLibsMap.has(soname)) {
+          sharedLibsMap.set(soname, realPath);
+        }
+        if (!visited.has(realPath)) {
+          queue.push(realPath);
+        }
+      } catch (err) {
+        console.warn(`Could not resolve real path for ${depPath}: ${err.message}`);
+      }
+    }
   }
-  if (fs.existsSync("build")) {
-    fs.rmSync("build", { recursive: true, force: true });
+
+  return sharedLibsMap;
+}
+
+function copySharedLibrariesToLibDir(sharedLibsMap, destLibDir) {
+  if (!fs.existsSync(destLibDir)) {
+    fs.mkdirSync(destLibDir, { recursive: true });
+  }
+
+  console.log(`Copying ${sharedLibsMap.size} unique shared libraries into ${destLibDir}...`);
+
+  for (const [soname, realPath] of sharedLibsMap.entries()) {
+    try {
+      const destPath = path.join(destLibDir, soname);
+      fs.copyFileSync(realPath, destPath);
+    } catch (err) {
+      console.error(`Failed to copy library ${soname} (from ${realPath}): ${err.message}`);
+    }
   }
 }
 
 async function main() {
   try {
     cleanUp();
-    if (!fs.existsSync(TEMP_DIR)) {
-      fs.mkdirSync(TEMP_DIR, { recursive: true });
+
+    console.log('Building zimage using system libvips...');
+    execSync(
+      `npx node-gyp rebuild --target=${ELECTRON_VERSION} --arch=${ELECTRON_ARCH} --dist-url=${ELECTRON_DIST_URL}`,
+      { stdio: 'inherit', cwd: PROJECT_ROOT }
+    );
+
+    if (!fs.existsSync(NODE_FILE)) {
+      throw new Error(`Built addon file not found at ${NODE_FILE}`);
     }
 
-    console.log(`Downloading libvips from: ${VIPS_TAR_URL}`);
-    await downloadFile(VIPS_TAR_URL, VIPS_TAR_PATH);
+    if (!fs.existsSync(OUTPUT_DIR)) {
+      fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+    }
 
-    execSync(`tar -zxvf "${VIPS_TAR_PATH}" -C "${PROJECT_ROOT}" include lib `, { stdio: 'inherit' });
+    // 1. Copy zimage.node into linux_x64/
+    const targetNodePath = path.join(OUTPUT_DIR, 'zimage.node');
+    console.log(`Copying ${NODE_FILE} -> ${targetNodePath}`);
+    fs.copyFileSync(NODE_FILE, targetNodePath);
 
-    console.log('Building zimage...');
-    execSync(`npx node-gyp rebuild --target=${ELECTRON_VERSION} --arch=${ELECTRON_ARCH} --dist-url=${ELECTRON_DIST_URL}`, { stdio: 'inherit', cwd: PROJECT_ROOT });
-    console.log('🎉 Build completed!');
-    process.exit(0);
+    // 2. Collect unique .so dependencies and copy directly into linux_x64/lib/
+    const sharedLibs = collectUniqueSharedLibs(NODE_FILE);
+    copySharedLibrariesToLibDir(sharedLibs, LIB_DIR);
+
+    console.log('🎉 Build completed successfully!');
+    console.log(`- Shipped Addon: ${targetNodePath}`);
+    const libFiles = fs.readdirSync(LIB_DIR);
+    console.log(`- Shipped Libraries: ${libFiles.length} files in ${LIB_DIR}`);
+
   } catch (error) {
-    console.error('❌ Build failed :', error.message);
+    console.error('❌ Build failed:', error.message);
     process.exit(1);
   }
 }

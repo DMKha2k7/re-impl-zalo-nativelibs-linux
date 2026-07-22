@@ -34,81 +34,91 @@ void InitializeVipsOnce() {
   vips_initialized = true;
 }
 
-bool RequireArguments(const Napi::CallbackInfo& info) {
-  if (info.Length() != 2 || !info[0].IsObject() || !info[1].IsFunction()) {
-    Napi::TypeError::New(info.Env(), "Expected options object and callback")
-        .ThrowAsJavaScriptException();
-    return false;
+std::string GetStringProp(const Napi::Object& obj, const char* key1, const char* key2 = nullptr) {
+  if (obj.Has(key1)) {
+    Napi::Value val = obj.Get(key1);
+    if (val.IsString()) return val.As<Napi::String>().Utf8Value();
   }
-  return true;
+  if (key2 != nullptr && obj.Has(key2)) {
+    Napi::Value val = obj.Get(key2);
+    if (val.IsString()) return val.As<Napi::String>().Utf8Value();
+  }
+  return "";
+}
+
+int GetIntProp(const Napi::Object& obj, const char* key, int default_val = 0) {
+  if (obj.Has(key)) {
+    Napi::Value val = obj.Get(key);
+    if (val.IsNumber()) return val.As<Napi::Number>().Int32Value();
+    if (val.IsString()) {
+      try {
+        return std::stoi(val.As<Napi::String>().Utf8Value());
+      } catch (...) {}
+    }
+  }
+  return default_val;
+}
+
+Napi::Function GetCallback(const Napi::CallbackInfo& info) {
+  if (info.Length() > 1 && info[1].IsFunction()) {
+    return info[1].As<Napi::Function>();
+  }
+  return Napi::Function::New(info.Env(), [](const Napi::CallbackInfo&) {});
 }
 
 Napi::Value Thumbnail(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
-  if (!RequireArguments(info)) {
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::TypeError::New(env, "Expected options object and callback")
+        .ThrowAsJavaScriptException();
     return env.Undefined();
   }
 
   Napi::Object options = info[0].As<Napi::Object>();
-  if (!options.Has("buffer") || !options.Get("buffer").IsBuffer() ||
-      !options.Has("width") || !options.Has("height") ||
-      !options.Has("format")) {
-    Napi::TypeError::New(env,
-                         "options requires buffer, width, height, and format")
+  if (!options.Has("buffer") || !options.Get("buffer").IsBuffer()) {
+    Napi::TypeError::New(env, "options requires buffer, width, height, and format")
         .ThrowAsJavaScriptException();
     return env.Undefined();
   }
 
-  Napi::Value width = options.Get("width");
-  Napi::Value height = options.Get("height");
-  Napi::Value format = options.Get("format");
-  if (!width.IsNumber() || !height.IsNumber() || !format.IsString()) {
-    Napi::TypeError::New(env, "width and height must be numbers; format a string")
-        .ThrowAsJavaScriptException();
-    return env.Undefined();
+  int width = GetIntProp(options, "width", 0);
+  int height = GetIntProp(options, "height", 0);
+  std::string format = GetStringProp(options, "format");
+  if (format.empty()) {
+    format = "png";
   }
 
+  Napi::Function callback = GetCallback(info);
   auto* worker = new BufferThumbnailWorker(
-      info[1].As<Napi::Function>(), options.Get("buffer").As<Napi::Buffer<char>>(),
-      width.As<Napi::Number>().Int32Value(),
-      height.As<Napi::Number>().Int32Value(), format.As<Napi::String>().Utf8Value());
+      callback, options.Get("buffer").As<Napi::Buffer<char>>(),
+      width, height, format);
   worker->Queue();
   return env.Undefined();
 }
 
 Napi::Value ThumbnailFs(const Napi::CallbackInfo& info) {
   Napi::Env env = info.Env();
-  if (!RequireArguments(info)) {
-    return env.Undefined();
-  }
-
-  Napi::Object options = info[0].As<Napi::Object>();
-  const char* required[] = {"inputPath", "outputPath", "width", "height"};
-  for (const char* property : required) {
-    if (!options.Has(property)) {
-      Napi::TypeError::New(env, "options requires inputPath, outputPath, width, and height")
-          .ThrowAsJavaScriptException();
-      return env.Undefined();
-    }
-  }
-
-  Napi::Value input_path = options.Get("inputPath");
-  Napi::Value output_path = options.Get("outputPath");
-  Napi::Value width = options.Get("width");
-  Napi::Value height = options.Get("height");
-  if (!input_path.IsString() || !output_path.IsString() || !width.IsNumber() ||
-      !height.IsNumber()) {
-    Napi::TypeError::New(env,
-                         "inputPath/outputPath must be strings; width/height numbers")
+  if (info.Length() < 1 || !info[0].IsObject()) {
+    Napi::TypeError::New(env, "Expected options object and callback")
         .ThrowAsJavaScriptException();
     return env.Undefined();
   }
 
+  Napi::Object options = info[0].As<Napi::Object>();
+  std::string input_path = GetStringProp(options, "inputPath", "input_path");
+  std::string output_path = GetStringProp(options, "outputPath", "output_path");
+  int width = GetIntProp(options, "width", 0);
+  int height = GetIntProp(options, "height", 0);
+
+  if (input_path.empty() || output_path.empty()) {
+    Napi::TypeError::New(env, "options requires inputPath and outputPath")
+        .ThrowAsJavaScriptException();
+    return env.Undefined();
+  }
+
+  Napi::Function callback = GetCallback(info);
   auto* worker = new FileThumbnailWorker(
-      info[1].As<Napi::Function>(), input_path.As<Napi::String>().Utf8Value(),
-      output_path.As<Napi::String>().Utf8Value(),
-      width.As<Napi::Number>().Int32Value(),
-      height.As<Napi::Number>().Int32Value());
+      callback, input_path, output_path, width, height);
   worker->Queue();
   return env.Undefined();
 }

@@ -66,10 +66,10 @@ void FileThumbnailWorker::Execute() {
 
 void FileThumbnailWorker::OnOK() {
   Napi::HandleScope scope(Env());
-  Callback().Call({Env().Null()});
+  Callback().Call({Env().Null(), Napi::String::New(Env(), output_path_)});
 }
 
 void FileThumbnailWorker::OnError(const Napi::Error& error) {
   Napi::HandleScope scope(Env());
-  Callback().Call({error.Value()});
+  Callback().Call({error.Value(), Napi::String::New(Env(), output_path_)});
 }

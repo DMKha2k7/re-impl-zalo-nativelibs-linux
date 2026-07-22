@@ -2,12 +2,15 @@
   "name": "re-impl-zimage",
   "version": "1.0.0",
   "description": "Re-impl of zimage for Linux",
-  "main": "index.js",
+  "main": "build.js",
   "scripts": {
     "build": "node build.js"
   },
   "license": "ISC",
   "dependencies": {
     "node-addon-api": "^5.0.0"
+  },
+  "devDependencies": {
+    "node-api-headers": "^1.9.0"
   }
 }

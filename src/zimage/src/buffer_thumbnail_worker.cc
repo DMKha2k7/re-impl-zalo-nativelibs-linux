@@ -1,0 +1,128 @@
+#include "buffer_thumbnail_worker.h"
+
+#include <glib-object.h>
+#include <vips/vips8>
+
+#include <string>
+
+namespace {
+
+std::string VipsErrorMessage() {
+  const char* message = vips_error_buffer();
+  std::string result = message == nullptr || *message == '\0'
+                           ? "libvips image operation failed"
+                           : message;
+  vips_error_clear();
+  return result;
+}
+
+void ReleaseImage(VipsImage* image) {
+  if (image != nullptr) {
+    vips_image_set_kill(image, TRUE);
+    g_object_unref(image);
+  }
+}
+
+}  // namespace
+
+BufferThumbnailWorker::BufferThumbnailWorker(
+    const Napi::Function& callback,
+    const Napi::Buffer<char>& input_buffer,
+    int width,
+    int height,
+    std::string format)
+    : Napi::AsyncWorker(callback),
+      input_buffer_reference_(Napi::Persistent(input_buffer)),
+      input_data_(input_buffer.Data()),
+      input_length_(input_buffer.Length()),
+      width_(width),
+      height_(height),
+      format_(std::move(format)),
+      output_data_(nullptr),
+      output_length_(0) {}
+
+BufferThumbnailWorker::~BufferThumbnailWorker() {
+  ReleaseInputBuffer();
+  if (output_data_ != nullptr) {
+    g_free(output_data_);
+  }
+}
+
+void BufferThumbnailWorker::Execute() {
+  VipsImage* thumbnail = nullptr;
+  VipsImage* flattened = nullptr;
+  VipsArrayDouble* background = nullptr;
+
+  if (vips_thumbnail_buffer(const_cast<char*>(input_data_), input_length_,
+                            &thumbnail, width_, "height", height_, "size",
+                            VIPS_SIZE_FORCE, nullptr) != 0) {
+    SetError(VipsErrorMessage());
+    return;
+  }
+
+  if (format_ == "jpeg") {
+    if (vips_image_hasalpha(thumbnail)) {
+      const double white[] = {255.0, 255.0, 255.0};
+      background = vips_array_double_new(white, G_N_ELEMENTS(white));
+      if (background == nullptr ||
+          vips_flatten(thumbnail, &flattened, "background", background,
+                       nullptr) != 0) {
+        if (background != nullptr) {
+          vips_area_unref(reinterpret_cast<VipsArea*>(background));
+        }
+        ReleaseImage(thumbnail);
+        SetError(VipsErrorMessage());
+        return;
+      }
+      vips_area_unref(reinterpret_cast<VipsArea*>(background));
+      ReleaseImage(thumbnail);
+      thumbnail = flattened;
+    }
+
+    void* encoded = nullptr;
+    if (vips_jpegsave_buffer(thumbnail, &encoded, &output_length_, "strip",
+                             TRUE, nullptr) != 0) {
+      ReleaseImage(thumbnail);
+      SetError(VipsErrorMessage());
+      return;
+    }
+    output_data_ = static_cast<char*>(encoded);
+  } else {
+    void* encoded = nullptr;
+    if (vips_pngsave_buffer(thumbnail, &encoded, &output_length_, nullptr) !=
+        0) {
+      ReleaseImage(thumbnail);
+      SetError(VipsErrorMessage());
+      return;
+    }
+    output_data_ = static_cast<char*>(encoded);
+  }
+
+  ReleaseImage(thumbnail);
+}
+
+void BufferThumbnailWorker::OnOK() {
+  Napi::HandleScope scope(Env());
+  char* data = output_data_;
+  output_data_ = nullptr;
+  Napi::Buffer<char> output = Napi::Buffer<char>::New(
+      Env(), data, output_length_, BufferThumbnailWorker::FreeOutputBuffer);
+  ReleaseInputBuffer();
+  Callback().Call({Env().Null(), output});
+}
+
+void BufferThumbnailWorker::OnError(const Napi::Error& error) {
+  Napi::HandleScope scope(Env());
+  ReleaseInputBuffer();
+  Callback().Call({error.Value(), Env().Undefined()});
+}
+
+void BufferThumbnailWorker::FreeOutputBuffer(Napi::Env /*env*/, char* data) {
+  g_free(data);
+}
+
+void BufferThumbnailWorker::ReleaseInputBuffer() {
+  if (!input_buffer_reference_.IsEmpty()) {
+    input_buffer_reference_.Reset();
+  }
+}

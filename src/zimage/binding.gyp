@@ -2,7 +2,11 @@
   "targets": [
     {
       "target_name": "zimage",
-      "sources": ["src/zimage.cpp"],
+      "sources": [
+        "src/zimage.cc",
+        "src/buffer_thumbnail_worker.cc",
+        "src/file_thumbnail_worker.cc"
+      ],
       "include_dirs": [
         "<!@(node -p \"require('node-addon-api').include\")",
         "<(module_root_dir)",
@@ -24,7 +28,8 @@
             "-fexceptions"
           ],
           "libraries": [
-            "-L<(module_root_dir)/lib"
+            "-L<(module_root_dir)/lib",
+            "-l:libvips-cpp.so.42"
           ],
           "ldflags": [
             "-Wl,-rpath,$$ORIGIN",

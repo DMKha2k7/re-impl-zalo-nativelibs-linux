@@ -29,7 +29,8 @@ BufferThumbnailWorker::BufferThumbnailWorker(
     const Napi::Buffer<char>& input_buffer,
     int width,
     int height,
-    std::string format)
+    std::string format,
+    int quality)
     : Napi::AsyncWorker(callback),
       input_buffer_reference_(Napi::Persistent(input_buffer)),
       input_data_(input_buffer.Data()),
@@ -37,6 +38,7 @@ BufferThumbnailWorker::BufferThumbnailWorker(
       width_(width),
       height_(height),
       format_(std::move(format)),
+      quality_(quality),
       output_data_(nullptr),
       output_length_(0) {}
 
@@ -60,7 +62,8 @@ void BufferThumbnailWorker::Execute() {
     return;
   }
 
-  if (format_ == "jpeg") {
+  if (format_ == "jpeg" || format_ == "jpg") {
+    // Xử lý kênh alpha đối với file JPEG (Flatten đè nền trắng)
     if (vips_image_hasalpha(thumbnail)) {
       const double white[] = {255.0, 255.0, 255.0};
       background = vips_array_double_new(white, G_N_ELEMENTS(white));
@@ -81,16 +84,28 @@ void BufferThumbnailWorker::Execute() {
 
     void* encoded = nullptr;
     if (vips_jpegsave_buffer(thumbnail, &encoded, &output_length_, "strip",
-                             TRUE, "Q", 80, nullptr) != 0) {
+                             TRUE, "Q", quality_, nullptr) != 0) {
+      ReleaseImage(thumbnail);
+      SetError(VipsErrorMessage());
+      return;
+    }
+    output_data_ = static_cast<char*>(encoded);
+  } else if (format_ == "webp") {
+    void* encoded = nullptr;
+    if (vips_webpsave_buffer(thumbnail, &encoded, &output_length_, "strip",
+                              TRUE, "Q", quality_, nullptr) != 0) {
       ReleaseImage(thumbnail);
       SetError(VipsErrorMessage());
       return;
     }
     output_data_ = static_cast<char*>(encoded);
   } else {
+    // Mặc định xuất ra PNG nếu không thuộc các format trên
     void* encoded = nullptr;
-    if (vips_image_write_to_buffer(thumbnail, ".png[compression=1,filter=none,palette=false,strip=true]", &encoded, &output_length_, nullptr) !=
-        0) {
+    if (vips_image_write_to_buffer(
+            thumbnail,
+            ".png[compression=1,filter=none,palette=false,strip=true]",
+            &encoded, &output_length_, nullptr) != 0) {
       ReleaseImage(thumbnail);
       SetError(VipsErrorMessage());
       return;
@@ -104,7 +119,7 @@ void BufferThumbnailWorker::Execute() {
 void BufferThumbnailWorker::OnOK() {
   Napi::HandleScope scope(Env());
   char* data = output_data_;
-  output_data_ = nullptr;
+  output_data_ = nullptr; // Chuyển giao quyền sở hữu bộ nhớ cho Node.js Buffer
   Napi::Buffer<char> output = Napi::Buffer<char>::New(
       Env(), data, output_length_, BufferThumbnailWorker::FreeOutputBuffer);
   ReleaseInputBuffer();

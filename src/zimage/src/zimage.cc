@@ -4,8 +4,10 @@
 #include <vips/vector.h>
 #include <vips/vips8>
 
+#include <algorithm>
 #include <mutex>
 #include <string>
+#include <unistd.h>
 
 #include "buffer_thumbnail_worker.h"
 #include "file_thumbnail_worker.h"
@@ -17,7 +19,7 @@ bool vips_initialized = false;
 std::string vips_initialization_error;
 
 void InitializeVipsOnce() {
-  if (vips_init("sharp") != 0) {
+  if (vips_init("zimage") != 0) {
     const char* message = vips_error_buffer();
     vips_initialization_error =
         message == nullptr || *message == '\0' ? "Failed to initialize libvips"
@@ -26,10 +28,21 @@ void InitializeVipsOnce() {
     return;
   }
 
-  vips_concurrency_set(0);
+  vips_concurrency_set(1);
   vips_vector_set_enabled(true);
+
+  long pages = sysconf(_SC_PHYS_PAGES);
+  long page_size = sysconf(_SC_PAGE_SIZE);
+  size_t total_memory_bytes = static_cast<size_t>(pages) * static_cast<size_t>(page_size);
+
+  size_t max_cache_mem = total_memory_bytes / 10;
+  size_t min_cache = 128 * 1024 * 1024;
+  size_t max_cache = 1024 * 1024 * 1024;
+
+  size_t allocated_cache_mem = std::clamp(max_cache_mem, min_cache, max_cache);
+
   vips_cache_set_max(100);
-  vips_cache_set_max_mem(100 * 1024 * 1024);
+  vips_cache_set_max_mem(allocated_cache_mem);
   vips_cache_set_max_files(50);
   vips_initialized = true;
 }
@@ -76,13 +89,14 @@ Napi::Value Thumbnail(const Napi::CallbackInfo& info) {
 
   Napi::Object options = info[0].As<Napi::Object>();
   if (!options.Has("buffer") || !options.Get("buffer").IsBuffer()) {
-    Napi::TypeError::New(env, "options requires buffer, width, height, and format")
+    Napi::TypeError::New(env, "options requires a valid buffer")
         .ThrowAsJavaScriptException();
     return env.Undefined();
   }
 
   int width = GetIntProp(options, "width", 0);
   int height = GetIntProp(options, "height", 0);
+  int quality = GetIntProp(options, "quality", 80);
   std::string format = GetStringProp(options, "format");
   if (format.empty()) {
     format = "png";
@@ -91,7 +105,7 @@ Napi::Value Thumbnail(const Napi::CallbackInfo& info) {
   Napi::Function callback = GetCallback(info);
   auto* worker = new BufferThumbnailWorker(
       callback, options.Get("buffer").As<Napi::Buffer<char>>(),
-      width, height, format);
+      width, height, format, quality);
   worker->Queue();
   return env.Undefined();
 }
@@ -109,6 +123,7 @@ Napi::Value ThumbnailFs(const Napi::CallbackInfo& info) {
   std::string output_path = GetStringProp(options, "outputPath", "output_path");
   int width = GetIntProp(options, "width", 0);
   int height = GetIntProp(options, "height", 0);
+  int quality = GetIntProp(options, "quality", 80);
 
   if (input_path.empty() || output_path.empty()) {
     Napi::TypeError::New(env, "options requires inputPath and outputPath")
@@ -118,7 +133,7 @@ Napi::Value ThumbnailFs(const Napi::CallbackInfo& info) {
 
   Napi::Function callback = GetCallback(info);
   auto* worker = new FileThumbnailWorker(
-      callback, input_path, output_path, width, height);
+      callback, input_path, output_path, width, height, quality);
   worker->Queue();
   return env.Undefined();
 }

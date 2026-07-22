@@ -12,7 +12,8 @@ class BufferThumbnailWorker final : public Napi::AsyncWorker {
                         const Napi::Buffer<char>& input_buffer,
                         int width,
                         int height,
-                        std::string format);
+                        std::string format,
+                        int quality);
   ~BufferThumbnailWorker() override;
 
   void Execute() override;
@@ -29,6 +30,7 @@ class BufferThumbnailWorker final : public Napi::AsyncWorker {
   int width_;
   int height_;
   std::string format_;
+  int quality_;
   char* output_data_;
   std::size_t output_length_;
 };

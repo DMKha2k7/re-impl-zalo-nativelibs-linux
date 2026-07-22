@@ -11,7 +11,8 @@ class FileThumbnailWorker final : public Napi::AsyncWorker {
                       std::string input_path,
                       std::string output_path,
                       int width,
-                      int height);
+                      int height,
+                      int quality);
 
   void Execute() override;
   void OnOK() override;
@@ -22,6 +23,7 @@ class FileThumbnailWorker final : public Napi::AsyncWorker {
   std::string output_path_;
   int width_;
   int height_;
+  int quality_;
 };
 
 #endif  // ZIMAGE_FILE_THUMBNAIL_WORKER_H_

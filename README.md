@@ -13,7 +13,7 @@ This repository contains the Rust re-implement source code from C decompile code
 - ❌ zcall: Not planned or later (requires ZaloCall from the Qt ZaloHelper Process)
 - ❌ zfile: Not needed (Only Windows needs this nativelib)
 - ✅ zimage: working
-- ✅ zjxl: working, Experiment
+- ✅ zjxl: working
 - ❌ zwalker: Planned
 
 # 📋 Prerequisites & Dependency Packages
@@ -101,7 +101,7 @@ The default destination folder is `nativelibs`.
 
 # ⚙️ How It Works
 ## Re-impl nativelibs to Linux from macOS x64
-### 1. Decompile macOS x64 nativelibs with Ghidra and export decompiled C code (decompile/*-decompile.c)
+### 1. Decompile macOS x64 nativelibs with Ghidra and export decompiled C code
 ### 2. Clean-room re-implement with Rust
 
 ## Build Process

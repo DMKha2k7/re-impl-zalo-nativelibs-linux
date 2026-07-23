@@ -1,4 +1,3 @@
-decompile/** linguist-vendored
 **/build/** linguist-vendored
 **/target/** linguist-vendored
 **/node_modules/** linguist-vendored

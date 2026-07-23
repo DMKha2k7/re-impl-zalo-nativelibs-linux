@@ -12,9 +12,9 @@ This repository contains the Rust re-implement source code from C decompile code
 - ❌ v8-profiles: Not planned or later
 - ❌ zcall: Not planned or later (requires ZaloCall from the Qt ZaloHelper Process)
 - ❌ zfile: Not needed (Only Windows needs this nativelib)
-- ✅ zimage: working, Experiment
+- ✅ zimage: working
 - ✅ zjxl: working, Experiment
-- ❌ zwalker: Planned for later
+- ❌ zwalker: Planned
 
 # 📋 Prerequisites & Dependency Packages
 
@@ -112,3 +112,9 @@ The orchestration script performs the following automated steps upon running `np
 2. **Live JS Wrapper Patching**:
    * `patch-js-helper.js` reads the original macOS JS wrappers from the `nativelibs-macOS` folder.
    * Modifies them in-memory to inject `process.platform === 'linux'` switches and correct relative `.node` paths before saving them to the destination. This eliminates the need to maintain static pre-patched wrapper files.
+
+---
+# LICENSE
+### This repository contains only original Rust source code and scripts written from scratch. It does not distribute any proprietary binaries, assets, or original dynamic libraries.
+### This project is an independent re-implementation, unofficial port of the native libraries. It is not affiliated with, endorsed by, or sponsored by Zalo or VNG Corporation. "Zalo" is a trademark of VNG Corporation.
+### This software is provided for educational and research purposes. Users are solely responsible for complying with applicable local laws and the platform Terms of Service.

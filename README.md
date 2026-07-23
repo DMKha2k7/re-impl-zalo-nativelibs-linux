@@ -1,19 +1,19 @@
 # Re-impl Zalo for Linux Native Libraries 🛠️
 
-This repository contains the Re-impl source code from C decompile code with Ghidar and build orchestrator to compile and package the native Node.js addons for the Zalo for Linux client.
+This repository contains the Rust re-implement source code from C decompile code with Ghidar and build orchestrator to compile and package the native Node.js addons for the Zalo for Linux client.
 
 # 🔴 Status
-- ✅ db-cross-v4: working, thanks for realdtn2's RE db-cross-v4 ([realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026))
+- ✅ db-cross-v4: working, C++ addon, thanks for realdtn2's RE db-cross-v4 ([realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026))
 - ✅ file-utilities: working (need to refresh in Storage Management Settings after patch)
 - ✅ file-utils: working
-- ✅ logger: working (native support)
-- ❌ mp4thumb: Planned, In Progress
+- ✅ logger: working (native support, pure JS module)
+- ❌ mp4thumb: In Progress
 - ✅ sqlite3: working (add native Linux libs to Zalo's nativelibs)
-- ❌ v8-profiles: Not planned
-- ❌ zcall: Not planned (requires ZaloCall from the Qt ZaloHelper Process)
+- ❌ v8-profiles: Not planned or later
+- ❌ zcall: Not planned or later (requires ZaloCall from the Qt ZaloHelper Process)
 - ❌ zfile: Not needed (Only Windows needs this nativelib)
 - ✅ zimage: working, Experiment
-- ❌ zjxl: Planned, In Progress (jxl nativelibs shipped with Linux `.so` libs)
+- ✅ zjxl: working, Experiment
 - ❌ zwalker: Planned for later
 
 # 📋 Prerequisites & Dependency Packages
@@ -30,9 +30,6 @@ sudo apt install -y \
   liblzma-dev \
   libbz2-dev \
   zlib1g-dev \
-  libjxl-dev \
-  libopencv-dev \
-  libjpeg-dev \
   libavcodec-dev \
   libavformat-dev \
   libswscale-dev \
@@ -51,9 +48,6 @@ sudo dnf install -y \
   xz-devel \
   bzip2-devel \
   zlib-devel \
-  libjxl-devel \
-  opencv-devel \
-  libjpeg-turbo-devel \
   ffmpeg-free-devel
 ```
 
@@ -68,9 +62,6 @@ sudo pacman -S --needed \
   xz \
   bzip2 \
   zlib \
-  libjxl \
-  opencv \
-  libjpeg-turbo \
   ffmpeg
 ```
 ---
@@ -111,15 +102,13 @@ The default destination folder is `nativelibs`.
 # ⚙️ How It Works
 ## Re-impl nativelibs to Linux from macOS x64
 ### 1. Decompile macOS x64 nativelibs with Ghidra and export decompiled C code (decompile/*-decompile.c)
-### 2. Re-impl with C++ or Rust
+### 2. Clean-room re-implement with Rust
 
 ## Build Process
 The orchestration script performs the following automated steps upon running `npm run build`:
 
 1. **Compilation**:
-   * Runs `node-gyp rebuild` for C++ modules (`mp4thumb`, , `zjxl`).
-   * Runs `cargo build --release` for Rust modules (`file-utilities`, `file-utils`, `zimage`).
+   * Runs `cargo build --release` to build Rust modules.
 2. **Live JS Wrapper Patching**:
    * `patch-js-helper.js` reads the original macOS JS wrappers from the `nativelibs-macOS` folder.
    * Modifies them in-memory to inject `process.platform === 'linux'` switches and correct relative `.node` paths before saving them to the destination. This eliminates the need to maintain static pre-patched wrapper files.
-

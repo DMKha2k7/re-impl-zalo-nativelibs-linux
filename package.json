@@ -6,8 +6,10 @@
   "license": "ISC",
   "scripts": {
     "build": "node build.js",
-    "clean": "node build.js clean",
-    "build-skip-patch": "node build.js --skip-patch"
+    "build:clean": "CLEAN_BUILD=true node build.js",
+    "build:skip-patch": "SKIP_PATCH=true node build.js",
+    "build:clean:skip-patch": "CLEAN_BUILD=true SKIP_PATCH=true node build.js",
+    "clean": "node -e 'require('./build.js').clean()'"
   },
   "devDependencies": {
     "adm-zip": "^0.5.13",

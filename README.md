@@ -1,20 +1,20 @@
-# Re-impl Zalo for Linux Native Libraries 🛠️
+# Re-implement Zalo for Linux Native Libraries 🛠️
 
 This repository contains the Rust re-implement source code from C decompile code with Ghidar and build orchestrator to compile and package the native Node.js addons for the Zalo for Linux client.
 
 # 🔴 Status
-- ✅ db-cross-v4: working, C++ addon, thanks for realdtn2's RE db-cross-v4 ([realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026))
-- ✅ file-utilities: working (need to refresh in Storage Management Settings after patch)
-- ✅ file-utils: working
-- ✅ logger: working (native support, pure JS module)
-- ❌ mp4thumb: In Progress
-- ✅ sqlite3: working (add native Linux libs to Zalo's nativelibs)
-- ❌ v8-profiles: Not planned or later
-- ❌ zcall: Not planned or later (requires ZaloCall from the Qt ZaloHelper Process)
-- ❌ zfile: Not needed (Only Windows needs this nativelib)
-- ✅ zimage: working
-- ✅ zjxl: working
-- ❌ zwalker: Planned
+- ✅ `db-cross-v4`: working, C++ addon, thanks for realdtn2's RE db-cross-v4 ([realdtn2/zalo-linux-2026](https://github.com/realdtn2/zalo-linux-2026))
+- ✅ `file-utilities`: working (need to refresh in Storage Management Settings after patch)
+- ✅ `file-utils`: working
+- ✅ `logger`: working (native support, pure JS module)
+- ❌ `mp4thumb`: In Progress
+- ✅ `sqlite3`: working (add native Linux libs to Zalo's nativelibs)
+- ❌ `v8-profiles`: Not planned or later
+- ❌ `zcall`: Not planned or later (requires ZaloCall from the Qt ZaloHelper Process)
+- ❌ `zfile`: Not needed (Only Windows needs this nativelib)
+- ✅ `zimage`: working
+- ✅ `zjxl`: working
+- ❌ `zwalker`: Planned
 
 # 📋 Prerequisites & Dependency Packages
 
@@ -92,15 +92,17 @@ npm install
 npm run build
 ```
 
-**With skipping js patch, run `npm run build-skip-patch` instead of `npm run build`.**
+**With skipping js patch, run `npm run build:skip-patch` instead of `npm run build`.**
 
 Once the process completes, the structured distribution-ready native addons will be located in the destination folder.
-The default destination folder is `nativelibs`.
+The default destination folder is `nativelibs`, the custom destination folder path can be set with `DEST_DIR` environment.
+
+With clean rebuild, run `npm run build:clean` (This is equivalent to running `npm run clean` and `node run build` sequentially) or run `npm run build:clean:skip-patch` with skipping js patch
 
 ---
 
 # ⚙️ How It Works
-## Re-impl nativelibs to Linux from macOS x64
+## Re-implement nativelibs to Linux from macOS x64
 ### 1. Decompile macOS x64 nativelibs with Ghidra and export decompiled C code
 ### 2. Clean-room re-implement with Rust
 

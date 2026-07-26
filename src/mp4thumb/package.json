@@ -9,9 +9,5 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
-  "gypfile": true,
-  "dependencies": {
-    "node-addon-api": "^5.0.0"
-  }
+  "license": "ISC"
 }

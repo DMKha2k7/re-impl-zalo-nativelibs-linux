@@ -7,7 +7,7 @@ This repository contains the Rust re-implement source code from C decompile code
 - ✅ `file-utilities`: working (need to refresh in Storage Management Settings after patch)
 - ✅ `file-utils`: working
 - ✅ `logger`: working (native support, pure JS module)
-- ✅ `mp4thumb`: working, testing (require by `zimage`, `zjxl` image processing in new version)
+- ✅ `mp4thumb`: working, testing
 - ✅ `sqlite3`: working (add native Linux libs to Zalo's nativelibs)
 - ❌ `v8-profiles`: Not planned or later
 - ❌ `zcall`: Not planned or later (requires ZaloCall from the Qt ZaloHelper Process)
